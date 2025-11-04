@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación de Desempeño - CNCI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="https://raw.githubusercontent.com/RolandoCalvillo/AppEvaluacionSE/main/favicon.ico" type="image/x-icon">
+    <style>
+        /* Estilos personalizados para la aplicación */
+        .gradient-bg {
+            background: linear-gradient(135deg, #2a6aff 0%, #ff8500 100%);
+        }
+        .login-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        .input-focus:focus {
+            box-shadow: 0 0 0 3px rgba(42, 106, 255, 0.2);
+        }
+        .btn-primary {
+            background-color: #2a6aff;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-primary:hover {
+            background-color: #1a5bff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .btn-secondary {
+            background-color: #ff8500;
+             transition: all 0.3s ease;
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-secondary:hover {
+            background-color: #f07d00;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+
+
+        /* Estilos para la barra de progreso */
+        .progress-bar-container { background-color: #e9ecef; border-radius: 9999px; }
+        .progress-bar {
+            background: linear-gradient(90deg, #2a6aff, #5a8dff);
+            transition: width 0.5s ease-in-out;
+            border-radius: 9999px;
+        }
+         .progress-bar-orange {
+            background: linear-gradient(90deg, #ff8500, #ffac5c);
+            transition: width 0.5s ease-in-out;
+            border-radius: 9999px;
+        }
+        
+        /* Estilos para el círculo de puntaje */
+        .score-circle {
+            width: 50px; height: 50px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: white;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+        .score-circle:hover {
+            transform: scale(1.1);
+        }
+        .score-high { background-color: #10b981; } /* Verde */
+        .score-medium { background-color: #f59e0b; } /* Amarillo */
+        .score-low { background-color: #ef4444; } /* Rojo */
+
+        /* Para el icono de desplegar/colapsar */
+        .criteria-toggle { transition: transform 0.3s ease; }
+        .rotated { transform: rotate(180deg); }
+
+        /* NUEVO: Transición suave para el contenedor de criterios */
+        .criteria-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out;
+        }
+        .criteria-content.open {
+            max-height: 500px; /* Suficientemente grande */
+            margin-top: 1rem;
+        }
+
+
+        /* Estilos del SKELETON LOADER para una mejor UX */
+        .skeleton {
+            background-color: #e2e8f0;
+            border-radius: 0.5rem;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            50% { opacity: .5; }
+        }
+
+        /* Ocultar scrollbar en el contenedor de modales */
+        .modal-container::-webkit-scrollbar { display: none; }
+        .modal-container { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Estilos para la tabla interactiva */
+        .th-sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .th-sortable:hover {
+            background-color: #f0f4f8;
+        }
+        
+        /* NUEVO: Hover para filas de tabla */
+        #asesoresTableBody tr:hover, #supervisorBadgesTableBody tr:hover {
+            background-color: #eff6ff; /* bg-blue-50 */
+        }
+        #usersTableBody tr:hover {
+             background-color: #f7fafc; /* bg-gray-50 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Contenedor Principal de la App -->
+    <div id="app" class="h-screen w-screen">
+
+        <!-- Pantalla de Carga Inicial -->
+        <div id="loadingScreen" class="w-full h-full flex flex-col items-center justify-center gradient-bg">
+             <img src="https://raw.githubusercontent.com/RolandoCalvillo/AppEvaluacionSE/main/assets/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="h-24 w-auto mb-4 fade-in">
+            <h1 class="text-white text-2xl font-bold mb-2 fade-in" style="animation-delay: 0.2s;">Sistema de Evaluación de Desempeño</h1>
+            <div class="w-16 h-16 border-4 border-t-transparent border-white rounded-full animate-spin mt-4 fade-in" style="animation-delay: 0.4s;"></div>
+            <p id="loadingStatus" class="text-white mt-4 text-sm fade-in" style="animation-delay: 0.6s;">Conectando con Firebase...</p>
+        </div>
+
+        <!-- Pantalla de Login -->
+        <div id="loginScreen" class="w-full h-full items-center justify-center p-4 gradient-bg hidden">
+            <div class="w-full max-w-md mx-auto login-card rounded-2xl shadow-2xl p-8 border border-white/20 fade-in">
+                <div class="text-center mb-6">
+                    <img src="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="mx-auto h-20 w-auto mb-4">
+                    <h1 id="loginTitle" class="text-2xl font-bold text-gray-800">Evaluación Modular</h1>
+                    <p id="loginSubtitle" class="text-gray-600 mt-1">Consulta tu desempeño ingresando tus credenciales.</p>
+                </div>
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">Usuario</label>
+                        <input type="text" id="username" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 input-focus" required>
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input type="password" id="password" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 input-focus" required>
+                    </div>
+                    <div id="loginError" class="hidden text-red-600 text-sm text-center bg-red-100 p-2 rounded-lg"></div>
+                    <button type="submit" id="loginButton" class="w-full btn-primary text-white font-semibold py-3 px-6 rounded-lg focus:outline-none flex items-center justify-center">
+                        <span id="loginButtonText">Ingresar</span>
+                        <div id="loginSpinner" class="hidden w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin ml-2"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Vista SUPERADMIN -->
+        <div id="superAdminScreen" class="hidden h-screen flex flex-col">
+            <!-- Header -->
+            <header class="bg-white shadow-md p-4 flex justify-between items-center z-10 flex-shrink-0">
+                <div class="flex items-center space-x-3">
+                    <img src="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="h-10 w-auto">
+                    <h1 class="text-xl font-bold text-gray-800">👑 Panel de Superadministrador</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                     <div id="superAdminSyncIndicator" class="text-xs text-gray-500 flex items-center space-x-1">
+                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Sincronizado</span>
+                    </div>
+                    <span id="superAdminWelcome" class="text-sm font-medium text-gray-700"></span>
+                    <button onclick="logout()" class="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg">Salir</button>
+                </div>
+            </header>
+            <!-- Contenido -->
+            <main class="flex-grow p-6 overflow-y-auto bg-gray-50">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Columna Izquierda -->
+                    <div>
+                        <!-- Gestión de Usuarios -->
+                        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold">Gestión de Usuarios</h2>
+                                <button onclick="openUserModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Usuario</button>
+                            </div>
+                            <!-- Barra de Búsqueda -->
+                            <div class="mb-4">
+                                <input type="text" id="userSearchInput" placeholder="Buscar por nombre o usuario..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('nombre')">Nombre ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('id')">Usuario ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('rol')">Rol ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('supervisorAsignado')">Supervisor ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                </table>
+                            </div>
+                             <!-- Paginación -->
+                            <div id="userPagination" class="mt-4 flex justify-between items-center text-sm"></div>
+                        </div>
+                         <!-- Analíticas Globales -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Analíticas Globales</h2>
+                            <div class="flex items-center space-x-4 mb-4">
+                                <select id="superAdminMonthSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                <select id="superAdminYearSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                            </div>
+                            <div class="relative h-80">
+                                <canvas id="superAdminChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Columna Derecha -->
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Personalizar Pantalla de Login</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="loginTitleInput" class="block text-sm font-medium text-gray-700">Título Principal</label>
+                                    <input type="text" id="loginTitleInput" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label for="loginSubtitleInput" class="block text-sm font-medium text-gray-700">Subtítulo</label>
+                                    <input type="text" id="loginSubtitleInput" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="text-right mt-4">
+                                <button onclick="saveLoginTitles()" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Guardar Títulos</button>
+                            </div>
+                        </div>
+                        <!-- Centro de Respaldo y Restauración -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Centro de Datos y Respaldo</h2>
+                            <div class="mb-4">
+                                <h3 class="font-semibold mb-2">Sincronización Manual con Firebase</h3>
+                                <div class="flex space-x-2 mt-1">
+                                    <button onclick="forceSyncToFirebase()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Sincronizar a Firebase</button>
+                                    <button onclick="forceReloadFromFirebase()" class="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Recargar de Firebase</button>
+                                </div>
+                            </div>
+                            <div class="space-y-4 border-t pt-4">
+                                <h3 class="font-semibold">Respaldo CSV</h3>
+                                <div>
+                                    <h4 class="text-sm font-medium">Usuarios</h4>
+                                    <div class="flex space-x-2 mt-1">
+                                        <button onclick="exportUsersToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Exportar</button>
+                                        <button onclick="openImportModal('users')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-medium">Insignias</h4>
+                                    <div class="flex space-x-2 mt-1">
+                                        <button onclick="exportBadgesToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Exportar</button>
+                                        <button onclick="openImportModal('badges')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         <!-- Gestión de Insignias Globales -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold">Gestión de Insignias Globales</h2>
+                                <button onclick="openBadgeModal()" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Añadir Insignia</button>
+                            </div>
+                             <div class="overflow-x-auto max-h-60">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Icono</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="globalBadgesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Gestión de Períodos Hábiles -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Gestión de Períodos Hábiles</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="availableYearsInput" class="block text-sm font-medium text-gray-700">Años Disponibles (separados por coma)</label>
+                                    <input type="text" id="availableYearsInput" placeholder="Ej: 2025,2024" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label for="availableMonthsInput" class="block text-sm font-medium text-gray-700">Meses Disponibles (separados por coma)</label>
+                                    <input type="text" id="availableMonthsInput" placeholder="Ej: Enero,Febrero,Marzo..." class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="text-right mt-4">
+                                <button onclick="saveAvailablePeriods()" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Guardar Períodos</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        
+        <!-- Vista SUPERVISOR -->
+        <div id="supervisorScreen" class="hidden h-screen flex flex-col">
+            <!-- Header -->
+            <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10 flex-shrink-0 border-b">
+                 <div class="flex items-center space-x-3">
+                    <img src="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="h-10 w-auto">
+                    <h1 class="text-xl font-bold text-gray-800">🧑‍🏫 Panel de Supervisor</h1>
+                </div>
+                 <div class="flex items-center space-x-4">
+                     <div id="supervisorSyncIndicator" class="text-xs text-gray-500 flex items-center space-x-1">
+                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Sincronizado</span>
+                    </div>
+                    <span id="supervisorWelcome" class="text-sm font-medium text-gray-700"></span>
+                    <button onclick="logout()" class="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg">Salir</button>
+                </div>
+            </header>
+             <!-- Contenido -->
+            <main class="flex-grow p-6 overflow-y-auto bg-slate-50">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Columna de Asesores y Respaldo -->
+                    <div class="lg:col-span-1 space-y-6 fade-in-up">
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-blue-500">
+                            <div class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                     <h2 class="text-lg font-bold text-gray-800">👥 Mis Asesores</h2>
+                                     <button onclick="openAddAsesorModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg text-sm">Añadir Asesor</button>
+                                </div>
+                                <div class="overflow-x-auto max-h-72">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-slate-100">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asesoresTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Centro de Respaldo para Supervisor -->
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-orange-500">
+                           <div class="p-6">
+                             <h2 class="text-lg font-bold mb-4 text-gray-800">💾 Respaldo de Evaluaciones</h2>
+                            <p class="text-sm text-gray-600 mb-4">Exporta o importa las evaluaciones de tus asesores en formato CSV.</p>
+                            <div class="flex space-x-4">
+                                <button onclick="exportSupervisorEvaluationsToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-transform hover:scale-105">Exportar</button>
+                                <button onclick="openImportModal('evaluations')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition-transform hover:scale-105">Importar</button>
+                            </div>
+                           </div>
+                        </div>
+                    </div>
+                    <!-- Columna de Plantillas y Analíticas -->
+                    <div class="lg:col-span-2 space-y-6 fade-in-up" style="animation-delay: 0.2s;">
+                         <!-- Gestión de Insignias del Supervisor -->
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-blue-500">
+                            <div class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-lg font-bold text-gray-800">🎖️ Gestión de Mis Insignias</h2>
+                                    <button onclick="openBadgeModal(null, false)" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Añadir Insignia</button>
+                                </div>
+                                <div class="overflow-x-auto max-h-60">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-slate-100">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Icono</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="supervisorBadgesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-orange-500">
+                            <div class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-lg font-bold text-gray-800">📝 Plantilla de Evaluación</h2>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium">Ponderación Total:</span>
+                                        <span id="totalPonderacion" class="font-bold text-lg">0%</span>
+                                    </div>
+                                    <button onclick="openCategoryModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Categoría</button>
+                                </div>
+                                <div id="categoriesContainer" class="space-y-4">
+                                   <!-- Las categorías de la plantilla se cargarán aquí -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Análisis del Equipo -->
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-blue-500">
+                            <div class="p-6">
+                                <h2 class="text-lg font-bold mb-4 text-gray-800">📊 Análisis del Equipo</h2>
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <select id="supervisorMonthSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                    <select id="supervisorYearSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div class="relative h-80">
+                                    <canvas id="supervisorChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Vista ASESOR -->
+        <div id="asesorScreen" class="hidden h-screen flex flex-col">
+            <!-- Header -->
+            <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10 flex-shrink-0 border-b">
+                <div class="flex items-center space-x-3">
+                    <img src="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="h-10 w-auto">
+                    <h1 class="text-xl font-bold text-gray-800">👨‍🎓 Dashboard de Desempeño</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <select id="monthSelector" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+                        <select id="yearSelector" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+                    </div>
+                    <span id="asesorWelcome" class="text-sm font-medium text-gray-700"></span>
+                    <button onclick="logout()" class="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg">Salir</button>
+                </div>
+            </header>
+             <!-- Contenido -->
+            <main id="asesorMainContent" class="flex-grow p-6 overflow-y-auto bg-slate-50">
+                <!-- Tabs -->
+                <div class="mb-6">
+                    <nav class="flex space-x-2 sm:space-x-4 bg-slate-200 rounded-lg p-1" aria-label="Tabs">
+                        <button onclick="switchAsesorTab('resumen')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Resumen</button>
+                        <button onclick="switchAsesorTab('tendencias')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Tendencias</button>
+                        <button onclick="switchAsesorTab('insignias')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Insignias</button>
+                        <button onclick="switchAsesorTab('plan')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Plan de Trabajo</button>
+                    </nav>
+                </div>
+                
+                <!-- Contenedor de Pestañas -->
+                <div id="asesorTabContent" class="fade-in-up">
+                    <!-- Pestaña Resumen -->
+                    <div id="resumen-tab"></div>
+                    <!-- Pestaña Tendencias -->
+                    <div id="tendencias-tab" class="hidden"></div>
+                    <!-- Pestaña Insignias -->
+                    <div id="insignias-tab" class="hidden"></div>
+                    <!-- Pestaña Plan de Trabajo -->
+                    <div id="plan-tab" class="hidden"></div>
+                </div>
+            </main>
+        </div>
+
+    </div> <!-- Fin del #app -->
+
+    <!-- ======================= MODALES ======================= -->
+    
+    <!-- Modal para Añadir/Editar Usuario (SuperAdmin) -->
+    <div id="userModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h3 id="userModalTitle" class="text-xl font-bold mb-4">Añadir Usuario</h3>
+            <form id="userForm" class="space-y-4">
+                <input type="hidden" id="userId">
+                <div>
+                    <label class="block text-sm font-medium">Nombre Completo</label>
+                    <input type="text" id="userFullName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Nombre de Usuario</label>
+                    <input type="text" id="userUsername" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Contraseña</label>
+                    <input type="text" id="userPassword" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Rol</label>
+                    <select id="userRole" class="mt-1 w-full border border-gray-300 rounded-lg p-2">
+                        <option value="asesor">Asesor</option>
+                        <option value="supervisor">Supervisor</option>
+                    </select>
+                </div>
+                <div id="supervisorSelectorContainer">
+                    <label class="block text-sm font-medium">Asignar a Supervisor</label>
+                    <select id="userSupervisor" class="mt-1 w-full border border-gray-300 rounded-lg p-2"></select>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeUserModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar</button>
+                    <button type="button" id="deleteUserBtn" onclick="deleteUser()" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hidden">Eliminar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal: Añadir Asesor (Supervisor) -->
+    <div id="addAsesorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Añadir Nuevo Asesor</h3>
+            <form id="addAsesorForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium">Nombre Completo</label>
+                    <input type="text" id="asesorFullName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Nombre de Usuario</label>
+                    <input type="text" id="asesorUsername" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Contraseña Inicial</label>
+                    <input type="text" id="asesorPassword" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeAddAsesorModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Crear Asesor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Añadir/Editar Categoría (Supervisor) -->
+    <div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h3 id="categoryModalTitle" class="text-xl font-bold mb-4">Añadir Categoría</h3>
+            <form id="categoryForm" class="space-y-4">
+                <input type="hidden" id="categoryId">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium">Nombre de la Categoría</label>
+                        <input type="text" id="categoryName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Ponderación (%)</label>
+                        <input type="number" id="categoryPonderacion" min="0" max="100" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium mb-2">Criterios de Evaluación</h4>
+                    <div id="criteriaInputs" class="space-y-2"></div>
+                    <button type="button" onclick="addCriterionInput()" class="mt-2 text-sm text-blue-600 hover:underline">+ Añadir criterio</button>
+                </div>
+                 <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeCategoryModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Evaluación (Supervisor) -->
+    <div id="evaluationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 modal-container">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center">
+                 <h3 id="evaluationModalTitle" class="text-xl font-bold">Evaluando a...</h3>
+                 <button onclick="closeEvaluationModal()" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-grow">
+                <form id="evaluationForm" class="space-y-6">
+                    <input type="hidden" id="evaluationAsesorId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div>
+                            <label class="block text-sm font-medium">Mes</label>
+                            <select id="evaluationMonth" class="mt-1 w-full border border-gray-300 rounded-lg p-2"></select>
+                       </div>
+                       <div>
+                            <label class="block text-sm font-medium">Año</label>
+                            <select id="evaluationYear" class="mt-1 w-full border border-gray-300 rounded-lg p-2"></select>
+                       </div>
+                    </div>
+                    <!-- Botón para otorgar insignias -->
+                    <div class="text-center">
+                        <button type="button" onclick="openGrantBadgeModal()" class="btn-secondary text-white font-semibold py-2 px-6 rounded-lg">🏆 Otorgar Insignias</button>
+                    </div>
+                    <!-- Contenedor para las categorías a evaluar -->
+                    <div id="evaluationCategoriesContainer" class="space-y-4"></div>
+                </form>
+            </div>
+            <div class="p-6 border-t flex justify-end space-x-3">
+                <button type="button" onclick="closeEvaluationModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" onclick="saveEvaluation()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar Evaluación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 text-center">
+            <h3 id="confirmModalTitle" class="text-lg font-bold mb-2">Confirmar Acción</h3>
+            <p id="confirmModalText" class="text-gray-600 mb-6">¿Estás seguro?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="confirmCancelBtn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg">Cancelar</button>
+                <button id="confirmOkBtn" class="bg-red-500 text-white font-semibold py-2 px-6 rounded-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Importación/Exportación -->
+    <div id="importExportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 id="importExportTitle" class="text-xl font-bold mb-4">Importar Datos</h3>
+            <form id="importForm" class="space-y-4">
+                 <input type="hidden" id="importDataType">
+                <div>
+                    <label class="block text-sm font-medium">Archivo CSV</label>
+                    <input type="file" id="csvFileInput" accept=".csv" class="mt-1 w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100" required/>
+                </div>
+                 <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                      <input id="overwriteDataCheckbox" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                    </div>
+                    <div class="ml-3 text-sm">
+                      <label for="overwriteDataCheckbox" class="font-medium text-gray-700">Sobrescribir datos existentes</label>
+                      <p class="text-gray-500">Si se marca, los datos del CSV reemplazarán los datos existentes con el mismo ID.</p>
+                    </div>
+                  </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeImportModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Importar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Añadir/Editar Insignia -->
+     <div id="badgeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h3 id="badgeModalTitle" class="text-xl font-bold mb-4">Añadir Insignia</h3>
+            <form id="badgeForm" class="space-y-4">
+                <input type="hidden" id="badgeId">
+                <input type="hidden" id="isGlobalBadge">
+                <div>
+                    <label class="block text-sm font-medium">Nombre de la Insignia</label>
+                    <input type="text" id="badgeName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Icono (Emoji)</label>
+                    <input type="text" id="badgeIcon" class="mt-1 w-full border border-gray-300 rounded-lg p-2" placeholder="Ej: 🏆" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Descripción</label>
+                    <textarea id="badgeDescription" class="mt-1 w-full border border-gray-300 rounded-lg p-2" rows="3" required></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeBadgeModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar Insignia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Otorgar Insignias -->
+     <div id="grantBadgeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-xl max-h-[80vh] flex flex-col p-6">
+            <h3 class="text-xl font-bold mb-4 flex-shrink-0">Otorgar Insignias</h3>
+            <div id="grantBadgeList" class="space-y-4 overflow-y-auto flex-grow pr-2">
+                <!-- Lista de insignias se cargará aquí -->
+            </div>
+            <div class="flex justify-end space-x-3 pt-6 flex-shrink-0">
+                <button type="button" onclick="closeGrantBadgeModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
+    <script type="module" defer>
+        // Importar funciones de Firebase 9+ (versión modular)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        // 🚨 LÍNEA 1: IMPORTAR AUTH 🚨 
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, writeBatch, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Configuración de Firebase (proporcionada por el usuario)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTRMoPteuAahoATZ1p5iXkj4XofBuaQ40",
+            authDomain: "pruebasdeinstrdeevaluacioncnci.firebaseapp.com",
+            projectId: "pruebasdeinstrdeevaluacioncnci",
+            storageBucket: "pruebasdeinstrdeevaluacioncnci.firebasestorage.app",
+            messagingSenderId: "194253696445",
+            appId: "1:194253696445:web:c93c7feb14da6b66ce76d4",
+            measurementId: "G-Q6DKY6ZS1Z"
+        };
+
+        // Inicialización de Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 🚨 ESTAS TRES LÍNEAS DEBEN ESTAR AQUÍ, AFUERA DE CUALQUIER FUNCIÓN 🚨
+        const auth = getAuth(app); 
+
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("Sesión anónima iniciada. Reglas de seguridad habilitadas.");
+            })
+            .catch((error) => {
+                console.error("Error al iniciar sesión anónima:", error);
+        });
+
+        // Variables de estado globales
+        let currentUser = null;
+        let usersCache = {};
+        let supervisorsCache = [];
+        let badgesCache = {}; 
+        let availablePeriods = {
+            years: [],
+            months: []
+        };
+        let superAdminChart = null;
+        let supervisorChart = null;
+        let asesorChart = null;
+        let currentEvaluationBadges = []; 
+        let userTableState = {
+            searchTerm: '',
+            sortKey: 'nombre',
+            sortDirection: 'asc',
+            currentPage: 1,
+            rowsPerPage: 15
+        };
+// FUNCIÓN NUEVA PARA AÑADIR
+        function parseCSVLine(line) {
+            const values = [];
+            // Expresión regular para separar por comas, respetando texto entrecomillado.
+            const regex = /(?:"([^"]*(?:""[^"]*)*)"|([^,]*))(?:,|$)/g;
+            if (!line || !line.trim()) {
+                return [];
+            }
+            let match;
+            while (match = regex.exec(line)) {
+                let value = match[1] !== undefined 
+                    ? match[1].replace(/""/g, '"') // <-- CORRECCIÓN APLICADA
+                    : match[2]; 
+                values.push(value);
+                if (match[0].slice(-1) !== ',') break; // Fin de la línea
+            }
+            return values;
+        }
+
+        // ======================= INICIALIZACIÓN DE LA APP =======================
+        
+        window.onload = async () => {
+            const loadingStatus = document.getElementById('loadingStatus');
+            try {
+                await getDoc(doc(db, "system", "health_check"));
+                loadingStatus.textContent = 'Conexión exitosa. Inicializando datos...';
+                await initializeDataIfNeeded();
+                const configDoc = await getDoc(doc(db, "system", "config"));
+                if (configDoc.exists()) {
+                    const configData = configDoc.data();
+                    if (configData.loginTitle) {
+                        document.getElementById('loginTitle').textContent = configData.loginTitle;
+                    }
+                    if (configData.loginSubtitle) {
+                        document.getElementById('loginSubtitle').textContent = configData.loginSubtitle;
+                    }
+                }
+                await loadAvailablePeriods();
+                await loadBadgesCache(); 
+                loadingStatus.textContent = '¡Listo para iniciar!';
+                
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('loginScreen').classList.add('flex');
+                    document.getElementById('loginScreen').classList.remove('hidden');
+                }, 500);
+
+            } catch (error) {
+                loadingStatus.textContent = 'Error al conectar con Firebase. Revisa la consola.';
+                console.error("Firebase connection error:", error);
+            }
+        };
+
+        // ======================= LÓGICA DE LOGIN Y NAVEGACIÓN =======================
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+            const loginButton = document.getElementById('loginButton');
+            const loginButtonText = document.getElementById('loginButtonText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            
+            errorDiv.classList.add('hidden');
+            loginButton.disabled = true;
+            loginButtonText.textContent = 'Verificando...';
+            loginSpinner.classList.remove('hidden');
+
+            try {
+                const userDoc = await getDoc(doc(db, "users", username));
+                if (userDoc.exists() && userDoc.data().password === password) {
+                    currentUser = { id: userDoc.id, ...userDoc.data() };
+                    navigateToRoleScreen(currentUser.rol);
+                } else {
+                    errorDiv.textContent = 'Usuario o contraseña incorrectos.';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Error al intentar iniciar sesión.';
+                errorDiv.classList.remove('hidden');
+                console.error(err);
+            } finally {
+                loginButton.disabled = false;
+                loginButtonText.textContent = 'Ingresar';
+                loginSpinner.classList.add('hidden');
+            }
+        });
+
+        async function navigateToRoleScreen(role) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('flex');
+            
+            await loadUsersCache();
+            await loadAvailablePeriods();
+
+            if (role === 'superadmin') {
+                document.getElementById('superAdminWelcome').textContent = `Hola, ${currentUser.nombre}`;
+                document.getElementById('superAdminScreen').classList.remove('hidden');
+                loadSuperAdminView();
+            } else if (role === 'supervisor') {
+                document.getElementById('supervisorWelcome').textContent = `Hola, ${currentUser.nombre}`;
+                document.getElementById('supervisorScreen').classList.remove('hidden');
+                loadSupervisorView();
+            } else if (role === 'asesor') {
+                document.getElementById('asesorWelcome').textContent = `Hola, ${currentUser.nombre}`;
+                document.getElementById('asesorScreen').classList.remove('hidden');
+                loadAsesorView();
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            ['superAdminScreen', 'supervisorScreen', 'asesorScreen'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById('loginScreen').classList.add('flex');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('loginForm').reset();
+        }
+
+        // ======================= VISTA SUPERADMIN =======================
+        
+        async function loadSuperAdminView() {
+            renderUsersTable();
+            renderGlobalBadgesTable(); 
+            const configDoc = await getDoc(doc(db, "system", "config"));
+            if (configDoc.exists()) {
+                const configData = configDoc.data();
+                document.getElementById('loginTitleInput').value = configData.loginTitle || 'Evaluación Modular';
+                document.getElementById('loginSubtitleInput').value = configData.loginSubtitle || 'Consulta tu desempeño.';
+                document.getElementById('availableYearsInput').value = configData.availableYears?.join(', ') || '';
+                document.getElementById('availableMonthsInput').value = configData.availableMonths?.join(', ') || '';
+            }
+            setupSuperAdminChartSelectors();
+            loadSuperAdminCharts();
+            // Listener para la barra de búsqueda de usuarios
+            document.getElementById('userSearchInput').addEventListener('input', (e) => {
+                userTableState.searchTerm = e.target.value.toLowerCase();
+                userTableState.currentPage = 1; 
+                renderUsersTable();
+            });
+        }
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+
+            let filteredUsers = Object.values(usersCache).filter(user => 
+                user.nombre.toLowerCase().includes(userTableState.searchTerm) ||
+                user.id.toLowerCase().includes(userTableState.searchTerm)
+            );
+
+            filteredUsers.sort((a, b) => {
+                let valA = a[userTableState.sortKey] || '';
+                let valB = b[userTableState.sortKey] || '';
+
+                if (userTableState.sortKey === 'supervisorAsignado') {
+                    valA = usersCache[valA]?.nombre || 'zzz';
+                    valB = usersCache[valB]?.nombre || 'zzz';
+                }
+
+                if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return userTableState.sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return userTableState.sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            const totalPages = Math.ceil(filteredUsers.length / userTableState.rowsPerPage);
+            if (userTableState.currentPage > totalPages && totalPages > 0) {
+                userTableState.currentPage = totalPages;
+            }
+             if (userTableState.currentPage < 1) {
+                userTableState.currentPage = 1;
+            }
+            const startIndex = (userTableState.currentPage - 1) * userTableState.rowsPerPage;
+            const paginatedUsers = filteredUsers.slice(startIndex, startIndex + userTableState.rowsPerPage);
+
+            if (paginatedUsers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">No se encontraron usuarios.</td></tr>`;
+            } else {
+                paginatedUsers.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">${user.nombre}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.rol === 'supervisor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">${user.rol}</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.supervisorAsignado ? usersCache[user.supervisorAsignado]?.nombre || 'N/A' : 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="openUserModal('${user.id}')" class="text-indigo-600 hover:text-indigo-900">Editar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            renderUserPagination(filteredUsers.length, totalPages);
+        }
+
+        function renderUserPagination(totalItems, totalPages) {
+            const paginationContainer = document.getElementById('userPagination');
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            const prevDisabled = userTableState.currentPage === 1 ? 'disabled' : '';
+            const nextDisabled = userTableState.currentPage === totalPages ? 'disabled' : '';
+
+            paginationContainer.innerHTML = `
+                <span>Mostrando ${Math.min(userTableState.rowsPerPage * (userTableState.currentPage - 1) + 1, totalItems)} - ${Math.min(userTableState.currentPage * userTableState.rowsPerPage, totalItems)} de ${totalItems}</span>
+                <div class="space-x-2">
+                    <button onclick="changeUserPage(-1)" ${prevDisabled} class="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Anterior</button>
+                    <span>Página ${userTableState.currentPage} de ${totalPages}</span>
+                    <button onclick="changeUserPage(1)" ${nextDisabled} class="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Siguiente</button>
+                </div>
+            `;
+        }
+
+        function changeUserPage(direction) {
+            userTableState.currentPage += direction;
+            renderUsersTable();
+        }
+
+        function sortUsers(key) {
+            if (userTableState.sortKey === key) {
+                userTableState.sortDirection = userTableState.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                userTableState.sortKey = key;
+                userTableState.sortDirection = 'asc';
+            }
+            userTableState.currentPage = 1;
+            renderUsersTable();
+        }
+        
+        function openUserModal(userId = null) {
+            const form = document.getElementById('userForm');
+            form.reset();
+            document.getElementById('supervisorSelectorContainer').style.display = 'block';
+            document.getElementById('deleteUserBtn').classList.add('hidden');
+
+            const supervisorSelect = document.getElementById('userSupervisor');
+            supervisorSelect.innerHTML = '<option value="">Ninguno</option>';
+            supervisorsCache.forEach(sup => {
+                supervisorSelect.innerHTML += `<option value="${sup.id}">${sup.nombre}</option>`;
+            });
+            
+            if (userId) {
+                const user = usersCache[userId];
+                document.getElementById('userModalTitle').textContent = 'Editar Usuario';
+                document.getElementById('userId').value = user.id;
+                document.getElementById('userFullName').value = user.nombre;
+                document.getElementById('userUsername').value = user.id;
+                document.getElementById('userUsername').disabled = true;
+                document.getElementById('userPassword').value = user.password;
+                document.getElementById('userRole').value = user.rol;
+                if (user.rol === 'asesor') {
+                    supervisorSelect.value = user.supervisorAsignado || '';
+                }
+                document.getElementById('supervisorSelectorContainer').style.display = user.rol === 'asesor' ? 'block' : 'none';
+                document.getElementById('deleteUserBtn').classList.remove('hidden');
+
+            } else {
+                document.getElementById('userModalTitle').textContent = 'Añadir Usuario';
+                document.getElementById('userId').value = ''; 
+                document.getElementById('userUsername').disabled = false;
+            }
+            document.getElementById('userModal').classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.add('hidden');
+        }
+        
+        document.getElementById('userRole').addEventListener('change', (e) => {
+            document.getElementById('supervisorSelectorContainer').style.display = e.target.value === 'asesor' ? 'block' : 'none';
+        });
+
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('userId').value;
+            const username = document.getElementById('userUsername').value.trim();
+            
+            if(!username){
+                alert("El nombre de usuario es obligatorio.");
+                return;
+            }
+
+            if (!userId) { // Solo validar si es un usuario nuevo
+                if (usersCache[username]) {
+                    alert("Este nombre de usuario ya existe. Por favor, elige otro.");
+                    return;
+                }
+            }
+
+            const userData = {
+                nombre: document.getElementById('userFullName').value,
+                password: document.getElementById('userPassword').value,
+                rol: document.getElementById('userRole').value,
+                supervisorAsignado: document.getElementById('userRole').value === 'asesor' ? document.getElementById('userSupervisor').value : null
+            };
+            
+            const docId = userId || username;
+            
+            await setDoc(doc(db, "users", docId), userData);
+            showSyncIndicator('superAdminSyncIndicator');
+            closeUserModal();
+            await loadUsersCache();
+            renderUsersTable();
+        });
+        
+        function deleteUser() {
+             const userId = document.getElementById('userId').value;
+             showConfirmModal('Eliminar Usuario', `¿Estás seguro de que quieres eliminar a ${userId}?`, async () => {
+                await deleteDoc(doc(db, "users", userId));
+                showSyncIndicator('superAdminSyncIndicator');
+                closeUserModal();
+                await loadUsersCache();
+                renderUsersTable();
+            });
+        }
+        
+        async function saveLoginTitles() {
+            const title = document.getElementById('loginTitleInput').value;
+            const subtitle = document.getElementById('loginSubtitleInput').value;
+            await setDoc(doc(db, "system", "config"), { loginTitle: title, loginSubtitle: subtitle }, { merge: true });
+            showSyncIndicator('superAdminSyncIndicator');
+            alert('Títulos guardados.');
+        }
+
+        async function saveAvailablePeriods() {
+            const years = document.getElementById('availableYearsInput').value.split(',').map(y => y.trim()).filter(Boolean);
+            const months = document.getElementById('availableMonthsInput').value.split(',').map(m => m.trim()).filter(Boolean);
+            
+            await setDoc(doc(db, "system", "config"), { availableYears: years, availableMonths: months }, { merge: true });
+            await loadAvailablePeriods(); 
+            showSyncIndicator('superAdminSyncIndicator');
+            alert('Períodos hábiles guardados.');
+        }
+
+        // ======================= VISTA SUPERVISOR =======================
+
+        async function loadSupervisorView() {
+            renderAsesoresTable();
+            await renderCategoryManagement();
+            renderSupervisorBadgesTable(); 
+            setupSupervisorChartSelectors();
+            loadSupervisorCharts();
+        }
+
+        function renderAsesoresTable() {
+            const tbody = document.getElementById('asesoresTableBody');
+            tbody.innerHTML = '';
+            const misAsesores = Object.values(usersCache).filter(u => u.supervisorAsignado === currentUser.id);
+            if (misAsesores.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="text-center text-gray-500 py-4">No tienes asesores asignados.</td></tr>`;
+                return;
+            }
+            misAsesores.forEach(asesor => {
+                const tr = document.createElement('tr');
+                tr.className = 'transition-colors';
+                tr.innerHTML = `
+                    <td class="px-4 py-2">${asesor.nombre}</td>
+                    <td class="px-4 py-2">
+                        <button onclick="openEvaluationModal('${asesor.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm">Evaluar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openAddAsesorModal() {
+            document.getElementById('addAsesorForm').reset();
+            document.getElementById('addAsesorModal').classList.remove('hidden');
+        }
+
+        function closeAddAsesorModal() {
+            document.getElementById('addAsesorModal').classList.add('hidden');
+        }
+        
+        document.getElementById('addAsesorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('asesorUsername').value.trim();
+            if (!username) {
+                alert("El nombre de usuario es obligatorio.");
+                return;
+            }
+            if (usersCache[username]) {
+                alert("Este nombre de usuario ya existe. Por favor, elige otro.");
+                return;
+            }
+
+            const newAsesorData = {
+                nombre: document.getElementById('asesorFullName').value,
+                password: document.getElementById('asesorPassword').value,
+                rol: 'asesor',
+                supervisorAsignado: currentUser.id
+            };
+            
+            await setDoc(doc(db, "users", username), newAsesorData);
+            showSyncIndicator('supervisorSyncIndicator');
+            closeAddAsesorModal();
+            await loadUsersCache();
+            renderAsesoresTable();
+        });
+
+
+        async function renderCategoryManagement() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '<div class="skeleton h-24 w-full"></div>';
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            const template = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+            container.innerHTML = '';
+
+            if (template.length === 0) {
+                container.innerHTML = `<p class="text-gray-500 text-center py-4">Aún no has creado categorías para tu plantilla de evaluación.</p>`;
+            } else {
+                template.forEach((cat, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 border rounded-lg bg-slate-50';
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold">${cat.nombre} <span class="text-sm font-normal text-gray-500">(${cat.ponderacion || 0}%)</span></h4>
+                            <div>
+                                <button onclick="openCategoryModal(${index})" class="text-indigo-600 text-sm mr-2">Editar</button>
+                                <button onclick="deleteCategory(${index})" class="text-red-600 text-sm">Eliminar</button>
+                            </div>
+                        </div>
+                        <ul class="list-disc list-inside mt-2 text-sm text-gray-600">
+                            ${(cat.criterios || []).map(c => `<li>${c}</li>`).join('')}
+                        </ul>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+            updatePonderacionTotal();
+        }
+
+        async function openCategoryModal(index = null) {
+            const form = document.getElementById('categoryForm');
+            form.reset();
+            document.getElementById('criteriaInputs').innerHTML = '';
+
+            if (index !== null) {
+                const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+                const category = templateDoc.data().categorias[index];
+                document.getElementById('categoryModalTitle').textContent = 'Editar Categoría';
+                document.getElementById('categoryId').value = index;
+                document.getElementById('categoryName').value = category.nombre;
+                document.getElementById('categoryPonderacion').value = category.ponderacion || 0;
+                (category.criterios || []).forEach(c => addCriterionInput(c));
+            } else {
+                document.getElementById('categoryModalTitle').textContent = 'Añadir Categoría';
+                document.getElementById('categoryId').value = '';
+                addCriterionInput();
+            }
+
+            document.getElementById('categoryModal').classList.remove('hidden');
+        };
+        
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+        
+        function addCriterionInput(value = '') {
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-2';
+            div.innerHTML = `
+                <input type="text" class="w-full border border-gray-300 rounded-lg p-2" value="${value}" required>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500">&times;</button>
+            `;
+            document.getElementById('criteriaInputs').appendChild(div);
+        }
+
+        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const index = document.getElementById('categoryId').value;
+            const newCategory = {
+                nombre: document.getElementById('categoryName').value,
+                ponderacion: parseInt(document.getElementById('categoryPonderacion').value) || 0,
+                criterios: [...document.querySelectorAll('#criteriaInputs input')].map(input => input.value).filter(val => val)
+            };
+            
+            const templateRef = doc(db, "evaluation_templates", currentUser.id);
+            const templateDoc = await getDoc(templateRef);
+            let categorias = templateDoc.exists() && Array.isArray(templateDoc.data().categorias) ? templateDoc.data().categorias : [];
+
+            if (index !== '') {
+                categorias[parseInt(index)] = newCategory;
+            } else {
+                categorias.push(newCategory);
+            }
+
+            await setDoc(templateRef, { categorias });
+            showSyncIndicator('supervisorSyncIndicator');
+            closeCategoryModal();
+            renderCategoryManagement();
+        });
+
+        async function deleteCategory(index) {
+            showConfirmModal('Eliminar Categoría', '¿Estás seguro?', async () => {
+                const templateRef = doc(db, "evaluation_templates", currentUser.id);
+                const templateDoc = await getDoc(templateRef);
+                let categorias = templateDoc.data().categorias;
+                categorias.splice(index, 1);
+                await setDoc(templateRef, { categorias });
+                showSyncIndicator('supervisorSyncIndicator');
+                renderCategoryManagement();
+            });
+        };
+        
+        async function updatePonderacionTotal() {
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            const categorias = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+            const total = categorias.reduce((sum, cat) => sum + (parseInt(cat.ponderacion) || 0), 0);
+            const totalEl = document.getElementById('totalPonderacion');
+            totalEl.textContent = `${total}%`;
+            totalEl.className = `font-bold text-lg ${total === 100 ? 'text-green-600' : 'text-red-600'}`;
+        }
+
+
+        // ======================= LÓGICA DE EVALUACIÓN (SUPERVISOR) =======================
+        
+        async function openEvaluationModal(asesorId) {
+            document.getElementById('evaluationModalTitle').textContent = `Evaluando a ${usersCache[asesorId].nombre}`;
+            document.getElementById('evaluationAsesorId').value = asesorId;
+            
+            const monthSelect = document.getElementById('evaluationMonth');
+            const yearSelect = document.getElementById('evaluationYear');
+            const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+            
+            monthSelect.innerHTML = availablePeriods.months.map(m => `<option value="${m}" ${m.toLowerCase() === currentMonthName.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('');
+            yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            
+            await loadEvaluationFormData();
+
+            document.getElementById('evaluationModal').classList.remove('hidden');
+        };
+
+        const loadEvaluationFormData = async () => {
+            const asesorId = document.getElementById('evaluationAsesorId').value;
+            const month = document.getElementById('evaluationMonth').value;
+            const year = document.getElementById('evaluationYear').value;
+            const container = document.getElementById('evaluationCategoriesContainer');
+            container.innerHTML = '<div class="skeleton h-48 w-full"></div>';
+
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            if (!templateDoc.exists() || !templateDoc.data().categorias) {
+                container.innerHTML = '<p class="text-red-500">Error: No se encontró tu plantilla de evaluación. Por favor, crea una primero.</p>';
+                return;
+            }
+            const template = templateDoc.data().categorias;
+
+            const evalId = `${asesorId}_${year}_${month}`;
+            const evalDoc = await getDoc(doc(db, "evaluations", evalId));
+            const existingData = evalDoc.exists() ? evalDoc.data() : {};
+            
+            currentEvaluationBadges = existingData.insigniasOtorgadas || [];
+            
+            container.innerHTML = '';
+            
+            container.innerHTML += `
+                <div class="p-4 border rounded-lg bg-gray-50">
+                    <h4 class="font-bold mb-2">Resumen General y Enlaces</h4>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                           <label class="block text-sm font-medium">Calificación General (0-10)</label>
+                           <input type="number" id="evalGeneralScore" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border rounded-lg bg-gray-200" readonly>
+                        </div>
+                         <div>
+                           <label class="block text-sm font-medium">Meta de Llamadas (%)</label>
+                           <input type="number" id="evalCallsTarget" min="0" max="100" value="${existingData.metaLlamadas || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                        </div>
+                         <div>
+                           <label class="block text-sm font-medium">Enlace "Detalles de Evaluación"</label>
+                           <input type="url" id="evalDetailsLink" value="${existingData.enlaceDetalles || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                        </div>
+                         <div>
+                           <label class="block text-sm font-medium">Enlace "Crear Plan de Trabajo"</label>
+                           <input type="url" id="evalWorkPlanLink" value="${existingData.enlacePlanTrabajo || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium">Comentarios Generales</label>
+                        <textarea id="evalGeneralComments" rows="3" class="mt-1 w-full p-2 border rounded-lg">${existingData.comentariosGenerales || ''}</textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium">Texto para "Plan de Trabajo"</label>
+                        <textarea id="evalWorkPlanText" rows="3" class="mt-1 w-full p-2 border rounded-lg">${existingData.textoPlanTrabajo || ''}</textarea>
+                    </div>
+                </div>
+            `;
+            
+            template.forEach(cat => {
+                const catData = existingData.categoriasEvaluadas ? existingData.categoriasEvaluadas[cat.nombre] || {} : {};
+                const criteriaHTML = cat.criterios.map(crit => `
+                     <div class="grid grid-cols-3 gap-2 items-center">
+                        <label class="text-sm col-span-2">${crit}</label>
+                        <input type="number" min="0" max="10" data-category="${cat.nombre}" data-criterion="${crit}" value="${(catData.criterios && catData.criterios[crit] !== undefined) ? catData.criterios[crit] : ''}" class="criterion-score w-full p-1 border rounded-lg text-center">
+                     </div>
+                `).join('');
+
+                container.innerHTML += `
+                    <div class="p-4 border rounded-lg">
+                        <h4 class="font-bold">${cat.nombre}</h4>
+                        <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">${criteriaHTML}</div>
+                            <div>
+                                <label class="block text-sm font-medium">Comentarios (Calidad)</label>
+                                <textarea data-category="${cat.nombre}" name="comment_calidad" rows="2" class="mt-1 w-full p-2 border rounded-lg">${catData.comentarioCalidad || ''}</textarea>
+                                <label class="block text-sm font-medium mt-2">Comentarios (Supervisión)</label>
+                                <textarea data-category="${cat.nombre}" name="comment_supervision" rows="2" class="mt-1 w-full p-2 border rounded-lg">${catData.comentarioSupervision || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.addEventListener('input', calculateWeightedScore);
+            calculateWeightedScore(); // Initial calculation
+        };
+
+        document.getElementById('evaluationMonth').addEventListener('change', loadEvaluationFormData);
+        document.getElementById('evaluationYear').addEventListener('change', loadEvaluationFormData);
+
+        function closeEvaluationModal() {
+            document.getElementById('evaluationModal').classList.add('hidden');
+        }
+        
+        async function saveEvaluation() {
+            const asesorId = document.getElementById('evaluationAsesorId').value;
+            const month = document.getElementById('evaluationMonth').value;
+            const year = document.getElementById('evaluationYear').value;
+            const evalId = `${asesorId}_${year}_${month}`;
+            
+            const evaluationData = {
+                asesorId, month, year, supervisorId: currentUser.id,
+                calificacionGeneral: document.getElementById('evalGeneralScore').value,
+                metaLlamadas: document.getElementById('evalCallsTarget').value,
+                enlaceDetalles: document.getElementById('evalDetailsLink').value,
+                enlacePlanTrabajo: document.getElementById('evalWorkPlanLink').value,
+                comentariosGenerales: document.getElementById('evalGeneralComments').value,
+                textoPlanTrabajo: document.getElementById('evalWorkPlanText').value,
+                categoriasEvaluadas: {},
+                insigniasOtorgadas: currentEvaluationBadges 
+            };
+
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            if (!templateDoc.exists()) {
+                alert("Error: No se encontró la plantilla de evaluación.");
+                return;
+            }
+            const templateCategories = templateDoc.data().categorias;
+
+            templateCategories.forEach(cat => {
+                const catName = cat.nombre;
+                const catData = {
+                    criterios: {},
+                    puntaje: 0,
+                    comentarioCalidad: '',
+                    comentarioSupervision: ''
+                };
+                
+                let totalScore = 0;
+                let scoreCount = 0;
+
+                cat.criterios.forEach(critName => {
+                    const input = document.querySelector(`#evaluationModal input[data-category="${catName}"][data-criterion="${critName}"]`);
+                    if (input && input.value !== '') {
+                        const score = parseFloat(input.value);
+                        if (!isNaN(score)) {
+                            catData.criterios[critName] = score;
+                            totalScore += score;
+                            scoreCount++;
+                        }
+                    }
+                });
+
+                if (scoreCount > 0) {
+                    catData.puntaje = (totalScore / scoreCount).toFixed(2);
+                }
+
+                const commentCalidad = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_calidad"]`);
+                if (commentCalidad) catData.comentarioCalidad = commentCalidad.value;
+                
+                const commentSupervision = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_supervision"]`);
+                if (commentSupervision) catData.comentarioSupervision = commentSupervision.value;
+
+                evaluationData.categoriasEvaluadas[catName] = catData;
+            });
+
+            try {
+                await setDoc(doc(db, "evaluations", evalId), evaluationData, { merge: true });
+                showSyncIndicator('supervisorSyncIndicator');
+                closeEvaluationModal();
+                alert('Evaluación guardada exitosamente.');
+            } catch(error) {
+                console.error("Error al guardar evaluación:", error);
+                alert('Hubo un error al guardar la evaluación.');
+            }
+        };
+
+
+        // ======================= VISTA ASESOR =======================
+
+        async function loadAsesorView() {
+            const monthSelect = document.getElementById('monthSelector');
+            const yearSelect = document.getElementById('yearSelector');
+            const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+
+            monthSelect.innerHTML = availablePeriods.months.map(m => `<option value="${m}" ${m.toLowerCase() === currentMonthName.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('');
+            yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+            monthSelect.addEventListener('change', renderAsesorDashboard);
+            yearSelect.addEventListener('change', renderAsesorDashboard);
+            
+            switchAsesorTab('resumen');
+            renderAsesorDashboard();
+        }
+
+        function switchAsesorTab(tabName) {
+            document.querySelectorAll('#asesorTabContent > div').forEach(div => div.classList.add('hidden'));
+            document.querySelectorAll('.asesor-tab').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+                btn.classList.add('text-gray-600', 'hover:bg-slate-300');
+            });
+            
+            const activeTab = document.getElementById(`${tabName}-tab`);
+            activeTab.classList.remove('hidden');
+            const button = document.querySelector(`.asesor-tab[onclick="switchAsesorTab('${tabName}')"]`);
+            button.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            button.classList.remove('text-gray-600', 'hover:bg-slate-300');
+
+            // Cargar contenido dinámico al cambiar de pestaña
+            if (tabName === 'resumen') renderAsesorDashboard();
+            if (tabName === 'tendencias') renderAsesorCharts();
+            if (tabName === 'insignias') renderAsesorBadges();
+            if (tabName === 'plan') renderAsesorPlan();
+        };
+
+        async function renderAsesorPlan() {
+            const month = document.getElementById('monthSelector').value;
+            const year = document.getElementById('yearSelector').value;
+            const evalId = `${currentUser.id}_${year}_${month}`;
+            const container = document.getElementById('plan-tab');
+
+            const evalDoc = await getDoc(doc(db, "evaluations", evalId));
+             if (!evalDoc.exists()) {
+                container.innerHTML = `<div class="text-center p-10 bg-white rounded-lg shadow-lg"><h3 class="text-xl font-bold">Sin Plan de Trabajo</h3><p class="text-gray-600 mt-2">No hay un plan de trabajo disponible para ${month} de ${year}.</p></div>`;
+                return;
+             }
+             const data = evalDoc.data();
+             container.innerHTML = `
+                 <div class="bg-white rounded-xl shadow-md p-6 text-center border-t-4 border-orange-500">
+                     <h3 class="font-bold text-2xl mb-4">🚀 Mi Plan de Trabajo</h3>
+                     <p class="text-gray-600 mb-6 max-w-xl mx-auto">${data.textoPlanTrabajo || 'Tu supervisor ha preparado un plan de trabajo para ti. Haz clic en el botón para verlo.'}</p>
+                     <a href="${data.enlacePlanTrabajo || '#'}" target="_blank" class="btn-secondary inline-block text-white font-semibold py-3 px-8 rounded-lg">Acceder a mi Plan de Trabajo</a>
+                 </div>`;
+        }
+
+
+        async function renderAsesorDashboard() {
+            const month = document.getElementById('monthSelector').value;
+            const year = document.getElementById('yearSelector').value;
+            const evalId = `${currentUser.id}_${year}_${month}`;
+            const resumenContainer = document.getElementById('resumen-tab');
+            
+            resumenContainer.innerHTML = '<div class="skeleton h-64 w-full"></div>';
+            
+            try {
+                const evalDoc = await getDoc(doc(db, "evaluations", evalId));
+            
+                if (!evalDoc.exists()) {
+                    resumenContainer.innerHTML = `<div class="text-center p-10 bg-white rounded-lg shadow-lg"><h3 class="text-xl font-bold">Sin Evaluación</h3><p class="text-gray-600 mt-2">Aún no se ha cargado tu evaluación para ${month} de ${year}.</p></div>`;
+                    return;
+                }
+
+                const data = evalDoc.data();
+                const supervisorId = data.supervisorId;
+                const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
+                const template = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+                
+                let categoriesHTML = '';
+                if (data.categoriasEvaluadas) {
+                    for (const catName in data.categoriasEvaluadas) {
+                        const catData = data.categoriasEvaluadas[catName];
+                        const categoryTemplate = template.find(t => t.nombre === catName);
+                        const ponderacion = categoryTemplate ? categoryTemplate.ponderacion : 0;
+                        const score = parseFloat(catData.puntaje || 0);
+                        const scoreClass = score >= 9 ? 'score-high' : score >= 7 ? 'score-medium' : 'score-low';
+                        const borderClass = score >= 9 ? 'border-green-500' : score >= 7 ? 'border-amber-500' : 'border-red-500';
+
+                        let criteriaHTMLList = '<p class="text-xs text-gray-500">No se evaluaron criterios específicos.</p>';
+                        if (catData.criterios && Object.keys(catData.criterios).length > 0) {
+                            criteriaHTMLList = Object.entries(catData.criterios).map(([critName, critScore]) => `
+                                <li class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-b-0">
+                                    <span class="text-gray-600">${critName}</span>
+                                    <span class="font-bold text-gray-800">${critScore}/10</span>
+                                </li>
+                            `).join('');
+                            criteriaHTMLList = `<ul class="space-y-1 mt-2 bg-slate-50 p-3 rounded-md">${criteriaHTMLList}</ul>`;
+                        }
+
+                        categoriesHTML += `
+                            <div class="bg-white rounded-xl shadow-md p-5 border-l-4 ${borderClass} transition-all duration-300 hover:shadow-lg">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 class="font-bold text-lg">${catName}</h4>
+                                        <span class="text-xs font-normal text-gray-400">Ponderación: ${ponderacion}%</span>
+                                    </div>
+                                    <div class="score-circle ${scoreClass}">${score.toFixed(1)}</div>
+                                </div>
+                                <div class="text-sm space-y-3 mt-4">
+                                    <p><strong>Comentarios de Calidad:</strong> ${catData.comentarioCalidad || 'N/A'}</p>
+                                    <p><strong>Comentarios de Supervisión:</strong> ${catData.comentarioSupervision || 'N/A'}</p>
+                                </div>
+                                <div class="mt-4">
+                                    <button onclick="toggleCriteria(this)" class="flex items-center text-sm text-blue-600 font-semibold">
+                                        <span>Ver Criterios</span>
+                                        <svg class="w-4 h-4 ml-1 criteria-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div class="criteria-content text-sm">
+                                        ${criteriaHTMLList}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                const calificacionGeneral = parseFloat(data.calificacionGeneral || 0);
+                const metaLlamadas = parseInt(data.metaLlamadas || 0);
+
+                resumenContainer.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-500">
+                             <h3 class="font-bold text-gray-600 text-sm uppercase tracking-wider">⭐ Calificación General</h3>
+                             <p class="text-5xl font-bold text-blue-600 my-2">${calificacionGeneral.toFixed(1)}<span class="text-2xl text-gray-400">/10</span></p>
+                             <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                 <div class="progress-bar h-2.5 rounded-full" style="width: ${calificacionGeneral * 10}%"></div>
+                             </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-orange-500">
+                             <h3 class="font-bold text-gray-600 text-sm uppercase tracking-wider">🎯 Meta de Llamadas</h3>
+                             <p class="text-5xl font-bold text-orange-500 my-2">${metaLlamadas}<span class="text-2xl text-gray-400">%</span></p>
+                             <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                 <div class="progress-bar-orange h-2.5 rounded-full" style="width: ${metaLlamadas}%"></div>
+                             </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4 mb-6">${categoriesHTML}</div>
+                    <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-slate-400">
+                         <h3 class="font-bold text-lg mb-2">Comentarios Generales del Supervisor</h3>
+                         <p class="text-sm text-gray-700">${data.comentariosGenerales || 'Sin comentarios generales.'}</p>
+                    </div>
+                    <div class="mt-6 text-center">
+                        <a href="${data.enlaceDetalles || '#'}" target="_blank" class="btn-primary inline-block text-white font-semibold py-3 px-8 rounded-lg">Ver Detalles de Evaluación</a>
+                    </div>
+                `;
+                
+            } catch (error) {
+                 console.error("Error renderizando dashboard de asesor:", error);
+                 resumenContainer.innerHTML = `<div class="text-center p-10 bg-red-100 text-red-700 rounded-lg shadow-lg"><h3 class="text-xl font-bold">Error al Cargar</h3><p class="mt-2">Hubo un problema al cargar tu evaluación. Por favor, intenta de nuevo más tarde.</p></div>`;
+            }
+        }
+        
+        // ======================= HELPERS Y UTILIDADES =======================
+        
+        async function loadUsersCache() {
+            usersCache = {};
+            supervisorsCache = [];
+            const querySnapshot = await getDocs(collection(db, "users"));
+            querySnapshot.forEach((doc) => {
+                usersCache[doc.id] = { id: doc.id, ...doc.data() };
+                if (doc.data().rol === 'supervisor') {
+                    supervisorsCache.push({ id: doc.id, ...doc.data() });
+                }
+            });
+        }
+
+        function showConfirmModal(title, text, onConfirm) {
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalText').textContent = text;
+            const confirmBtn = document.getElementById('confirmOkBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+            
+            const newConfirmBtn = confirmBtn.cloneNode(true); 
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            
+            newConfirmBtn.addEventListener('click', () => {
+                onConfirm();
+                document.getElementById('confirmModal').classList.add('hidden');
+            });
+            cancelBtn.onclick = () => document.getElementById('confirmModal').classList.add('hidden');
+
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+        
+        function showSyncIndicator(elementId) {
+            const indicator = document.getElementById(elementId);
+            if (indicator) {
+                indicator.innerHTML = `
+                    <div class="w-2 h-2 rounded-full bg-yellow-500 animate-ping absolute"></div>
+                    <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    <span class="ml-1">Guardando...</span>`;
+                setTimeout(() => {
+                    indicator.innerHTML = `
+                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Sincronizado</span>`;
+                }, 1500);
+            }
+        }
+
+        async function loadAvailablePeriods() {
+            const configDoc = await getDoc(doc(db, "system", "config"));
+            if (configDoc.exists()) {
+                const data = configDoc.data();
+                availablePeriods.years = data.availableYears || [new Date().getFullYear().toString()];
+                availablePeriods.months = data.availableMonths || ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            }
+        }
+        
+        function toggleCriteria(button) {
+            const criteriaContent = button.nextElementSibling;
+            const icon = button.querySelector('svg');
+            const buttonText = button.querySelector('span');
+            
+            const isOpen = criteriaContent.classList.toggle('open');
+            icon.classList.toggle('rotated', isOpen);
+            buttonText.textContent = isOpen ? 'Ocultar Criterios' : 'Ver Criterios';
+        }
+
+        async function initializeDataIfNeeded() {
+            const configRef = doc(db, "system", "config");
+            const configDoc = await getDoc(configRef);
+
+            if (!configDoc.exists()) {
+                console.log("No initial config found. Creating defaults...");
+                const batch = writeBatch(db);
+                
+                batch.set(doc(db, "users", "superadmin"), {
+                    nombre: "Super Administrador",
+                    password: "123",
+                    rol: "superadmin"
+                });
+
+                batch.set(configRef, {
+                    loginTitle: "Evaluación Modular",
+                    loginSubtitle: "Departamento de Servicios Estudiantiles",
+                    availableYears: ["2025", "2024"],
+                    availableMonths: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+                });
+                
+                await batch.commit();
+                console.log("Default config and SuperAdmin created.");
+            }
+        }
+        
+        // ======================= LÓGICA DE IMPORTACIÓN/EXPORTACIÓN CSV =======================
+        function openImportModal(type) {
+            document.getElementById('importDataType').value = type;
+            document.getElementById('importForm').reset();
+            const title = type === 'users' ? 'Importar Usuarios' : type === 'badges' ? 'Importar Insignias' : 'Importar Evaluaciones';
+            document.getElementById('importExportTitle').textContent = title;
+            document.getElementById('importExportModal').classList.remove('hidden');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importExportModal').classList.add('hidden');
+        }
+
+        async function exportUsersToCSV() {
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            let csvContent = "username,nombre,rol,password,supervisorAsignado\n";
+            usersSnapshot.forEach(doc => {
+                const user = doc.data();
+                const row = [doc.id, `"${user.nombre}"`, user.rol, user.password, user.supervisorAsignado || ''].join(',');
+                csvContent += row + "\n";
+            });
+            downloadCSV(csvContent, 'usuarios_respaldo.csv');
+        }
+
+        async function exportSupervisorEvaluationsToCSV() {
+            await loadUsersCache();
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            if (!templateDoc.exists()) {
+                alert("No se puede exportar porque no tienes una plantilla de evaluación definida.");
+                return;
+            }
+            const template = templateDoc.data().categorias || [];
+            let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
+            template.forEach(cat => {
+                cat.criterios.forEach(crit => {
+                    const cleanCrit = crit.replace(/"/g, '""'); 
+                    headers.push(`"${cat.nombre}_${cleanCrit}_Puntaje"`);
+                });
+                headers.push(`"${cat.nombre}_ComentarioCalidad"`, `"${cat.nombre}_ComentarioSupervision"`);
+            });
+            
+            const q = query(collection(db, "evaluations"), where("supervisorId", "==", currentUser.id));
+            const evaluationsSnapshot = await getDocs(q);
+
+            let csvContent = headers.join(',') + '\n';
+
+            evaluationsSnapshot.forEach(doc => {
+                const e = doc.data();
+                const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
+                
+                let row = [
+                    doc.id, e.asesorId, `"${asesorNombre}"`, e.month, e.year,
+                    e.calificacionGeneral || '', e.metaLlamadas || '',
+                    `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`,
+                    `"${e.enlaceDetalles || ''}"`,
+                    `"${e.enlacePlanTrabajo || ''}"`,
+                    `"${(e.textoPlanTrabajo || '').replace(/"/g, '""')}"`
+                ];
+
+                template.forEach(cat => {
+                    const catData = e.categoriasEvaluadas ? e.categoriasEvaluadas[cat.nombre] || {} : {};
+                    cat.criterios.forEach(crit => {
+                        const score = catData.criterios ? catData.criterios[crit] || '' : '';
+                        row.push(score);
+                    });
+                    row.push(`"${(catData.comentarioCalidad || '').replace(/"/g, '""')}"`);
+                    row.push(`"${(catData.comentarioSupervision || '').replace(/"/g, '""')}"`);
+                });
+                csvContent += row.join(',') + '\n';
+            });
+
+            downloadCSV(csvContent, `evaluaciones_${currentUser.id}_respaldo.csv`);
+        }
+        
+        async function exportBadgesToCSV() {
+            const badgesSnapshot = await getDocs(collection(db, "insignias"));
+            let csvContent = "id,nombre,icono,descripcion,tipo,creadorId\n";
+            badgesSnapshot.forEach(doc => {
+                const badge = doc.data();
+                const row = [doc.id, `"${badge.nombre}"`, `"${badge.icono}"`, `"${badge.descripcion}"`, badge.tipo, badge.creadorId || ''].join(',');
+                csvContent += row + "\n";
+            });
+            downloadCSV(csvContent, 'insignias_respaldo.csv');
+        }
+
+        function downloadCSV(content, fileName) {
+            const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        document.getElementById('importForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('csvFileInput');
+            if (fileInput.files.length === 0) {
+                alert('Por favor, selecciona un archivo CSV.');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = async function(event) {
+                const csvData = event.target.result;
+                const dataType = document.getElementById('importDataType').value;
+                
+                if (dataType === 'users') {
+                    await importUsersFromCSV(csvData);
+                } else if (dataType === 'evaluations') {
+                    await importSupervisorEvaluationsFromCSV(csvData);
+                } else if (dataType === 'badges') { 
+                    await importBadgesFromCSV(csvData);
+                }
+            };
+            
+            reader.readAsText(file, "UTF-8");
+        });
+
+async function importUsersFromCSV(csvData) {
+    const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+    const lines = csvData.split('\n').filter(line => line.trim());
+    if (lines.length < 2) {
+        alert('El archivo CSV está vacío o solo contiene la cabecera.');
+        return;
+    }
+    
+    const headers = parseCSVLine(lines[0]);
+    const batch = writeBatch(db);
+    let operationsCount = 0;
+
+    try {
+    const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
+
+    for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        
+        const record = cleanHeaders.reduce((obj, header, index) => {
+            obj[header] = values[index] || ''; 
+            return obj;
+        }, {});
+
+            if (!record.username) continue;
+            const userRef = doc(db, "users", record.username);
+            const userData = {
+                nombre: record.nombre || '',
+                rol: record.rol || 'asesor',
+                password: record.password || '123',
+                supervisorAsignado: record.supervisorAsignado || null
+            };
+            
+            batch.set(userRef, userData, { merge: !overwrite });
+            operationsCount++;
+        }
+        await batch.commit();
+        alert(`Se han procesado ${operationsCount} registros de usuarios.`);
+        closeImportModal();
+        await loadUsersCache();
+        renderUsersTable();
+    } catch (error) {
+        console.error("Error al importar usuarios CSV:", error);
+        alert("Error al importar el archivo de usuarios. Revisa la consola.");
+    }
+}
+
+        async function importSupervisorEvaluationsFromCSV(csvData) {
+            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+             if (!templateDoc.exists()) {
+                alert("No se puede importar porque no tienes una plantilla de evaluación definida.");
+                return;
+            }
+            const template = templateDoc.data().categorias || [];
+            
+            const lines = csvData.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                alert('El archivo CSV de evaluaciones está vacío o solo contiene la cabecera.');
+                return;
+            }
+
+            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            try {
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].trim().split(',');
+                    const record = headers.reduce((obj, header, index) => {
+                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                        return obj;
+                    }, {});
+
+                    if (!record.evalId && !(record.asesorId && record.año && record.mes)) continue;
+                    
+                    const evalId = record.evalId || `${record.asesorId}_${record.año}_${record.mes}`;
+                    const evalRef = doc(db, "evaluations", evalId);
+
+                    const evalData = {
+                        asesorId: record.asesorId, supervisorId: currentUser.id, month: record.mes, year: record.año,
+                        calificacionGeneral: record.calificacionGeneral || '', metaLlamadas: record.metaLlamadas || '',
+                        comentariosGenerales: record.comentariosGenerales || '', enlaceDetalles: record.enlaceDetalles || '',
+                        enlacePlanTrabajo: record.enlacePlanTrabajo || '', textoPlanTrabajo: record.textoPlanTrabajo || '',
+                        categoriasEvaluadas: {}
+                    };
+
+                    template.forEach(cat => {
+                        const catName = cat.nombre;
+                        const catData = { criterios: {}, puntaje: 0, comentarioCalidad: '', comentarioSupervision: '' };
+                        let totalScore = 0;
+                        let scoreCount = 0;
+
+                        cat.criterios.forEach(crit => {
+                            const score = parseFloat(record[`${catName}_${crit}_Puntaje`]);
+                            if (!isNaN(score)) {
+                                catData.criterios[crit] = score;
+                                totalScore += score;
+                                scoreCount++;
+                            }
+                        });
+                        
+                        if (scoreCount > 0) catData.puntaje = (totalScore / scoreCount).toFixed(2);
+                        catData.comentarioCalidad = record[`${catName}_ComentarioCalidad`] || '';
+                        catData.comentarioSupervision = record[`${catName}_ComentarioSupervision`] || '';
+                        evalData.categoriasEvaluadas[catName] = catData;
+                    });
+                let finalWeightedScore = 0;
+
+                template.forEach(cat => {
+                    const ponderacion = cat.ponderacion || 0;
+                    const catData = evalData.categoriasEvaluadas[cat.nombre];
+
+                    if (catData && catData.puntaje) {
+                        const categoryAverage = parseFloat(catData.puntaje);
+                        const weightedContribution = (categoryAverage / 10) * ponderacion;
+                        finalWeightedScore += weightedContribution;
+                    }
+                });
+
+                if (!evalData.calificacionGeneral) {
+                    evalData.calificacionGeneral = (finalWeightedScore / 10).toFixed(1);
+                }
+                    batch.set(evalRef, evalData, { merge: !overwrite });
+                    operationsCount++;
+                }
+
+                await batch.commit();
+                alert(`Se han procesado ${operationsCount} registros de evaluaciones.`);
+                closeImportModal();
+
+            } catch(error) {
+                console.error("Error al importar evaluaciones CSV:", error);
+                alert("Error al importar el archivo de evaluaciones. Revisa la consola y asegúrate que el formato coincida con tu plantilla.");
+            }
+        }
+        
+        async function importBadgesFromCSV(csvData) {
+            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+            const lines = csvData.split('\n').filter(line => line.trim());
+             if (lines.length < 2) {
+                alert('El archivo CSV de insignias está vacío o solo contiene la cabecera.');
+                return;
+            }
+            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            try {
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].trim().split(',');
+                    const record = headers.reduce((obj, header, index) => {
+                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                        return obj;
+                    }, {});
+
+                    if (!record.id) continue;
+                    const badgeRef = doc(db, "insignias", record.id);
+                    const badgeData = {
+                        nombre: record.nombre || '',
+                        icono: record.icono || '',
+                        descripcion: record.descripcion || '',
+                        tipo: record.tipo || 'global',
+                        creadorId: record.creadorId || null
+                    };
+                    
+                    batch.set(badgeRef, badgeData, { merge: !overwrite });
+                    operationsCount++;
+                }
+                await batch.commit();
+                alert(`Se han procesado ${operationsCount} registros de insignias.`);
+                closeImportModal();
+                await loadBadgesCache();
+                renderGlobalBadgesTable();
+            } catch (error) {
+                console.error("Error al importar insignias CSV:", error);
+                alert("Error al importar el archivo de insignias. Revisa la consola.");
+            }
+        }
+
+
+        // ======================= LÓGICA DE CÁLCULO DE PUNTAJES =======================
+        
+        async function calculateWeightedScore() {
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            if (!templateDoc.exists()) return;
+            
+            const templateCategories = templateDoc.data().categorias || [];
+            let finalWeightedScore = 0;
+
+            templateCategories.forEach(cat => {
+                const ponderacion = cat.ponderacion || 0;
+                const criteriaInputs = document.querySelectorAll(`#evaluationModal input[data-category="${cat.nombre}"].criterion-score`);
+                
+                let totalScore = 0;
+                let scoreCount = 0;
+
+                criteriaInputs.forEach(input => {
+                    if (input.value !== '') {
+                        const score = parseFloat(input.value);
+                        if (!isNaN(score) && score >= 0 && score <= 10) {
+                            totalScore += score;
+                            scoreCount++;
+                        }
+                    }
+                });
+
+                if (scoreCount > 0) {
+                    const categoryAverage = totalScore / scoreCount;
+                    const weightedContribution = (categoryAverage / 10) * ponderacion;
+                    finalWeightedScore += weightedContribution;
+                }
+            });
+
+            const finalScoreOutOf10 = (finalWeightedScore / 10).toFixed(1);
+            const scoreInput = document.getElementById('evalGeneralScore');
+            if (scoreInput) {
+                scoreInput.value = finalScoreOutOf10;
+            }
+        }
+
+        // ======================= NUEVAS FUNCIONES PARA GRÁFICOS =======================
+
+        function setupSupervisorChartSelectors() {
+            const monthSelect = document.getElementById('supervisorMonthSelector');
+            const yearSelect = document.getElementById('supervisorYearSelector');
+            const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+            monthSelect.innerHTML = availablePeriods.months.map(m => `<option value="${m}" ${m.toLowerCase() === currentMonthName.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('');
+            yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            monthSelect.addEventListener('change', loadSupervisorCharts);
+            yearSelect.addEventListener('change', loadSupervisorCharts);
+        }
+        
+        async function loadSupervisorCharts() {
+            const month = document.getElementById('supervisorMonthSelector').value;
+            const year = document.getElementById('supervisorYearSelector').value;
+            const q = query(collection(db, "evaluations"), where("supervisorId", "==", currentUser.id), where("year", "==", year), where("month", "==", month));
+            const querySnapshot = await getDocs(q);
+            
+            const labels = [];
+            const data = [];
+
+            const supervisorAsesorIds = Object.values(usersCache)
+                .filter(u => u.supervisorAsignado === currentUser.id)
+                .map(u => u.id);
+
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                if (supervisorAsesorIds.includes(evalData.asesorId)) {
+                    const asesorNombre = usersCache[evalData.asesorId]?.nombre || evalData.asesorId;
+                    labels.push(asesorNombre);
+                    data.push(parseFloat(evalData.calificacionGeneral) || 0);
+                }
+            });
+            
+            const ctx = document.getElementById('supervisorChart').getContext('2d');
+            if (supervisorChart) {
+                supervisorChart.destroy();
+            }
+            supervisorChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calificación General',
+                        data: data,
+                        backgroundColor: 'rgba(255, 133, 0, 0.6)',
+                        borderColor: 'rgba(255, 133, 0, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function setupSuperAdminChartSelectors() {
+            const monthSelect = document.getElementById('superAdminMonthSelector');
+            const yearSelect = document.getElementById('superAdminYearSelector');
+            const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+            monthSelect.innerHTML = availablePeriods.months.map(m => `<option value="${m}" ${m.toLowerCase() === currentMonthName.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('');
+            yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            monthSelect.addEventListener('change', loadSuperAdminCharts);
+            yearSelect.addEventListener('change', loadSuperAdminCharts);
+        }
+
+        async function loadSuperAdminCharts() {
+            const month = document.getElementById('superAdminMonthSelector').value;
+            const year = document.getElementById('superAdminYearSelector').value;
+            const q = query(collection(db, "evaluations"), where("year", "==", year), where("month", "==", month));
+            const querySnapshot = await getDocs(q);
+            
+            const supervisorData = {}; // { supervisorId: { totalScore: X, count: Y } }
+            
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                const supId = evalData.supervisorId;
+                if (!supId) return;
+
+                if (!supervisorData[supId]) {
+                    supervisorData[supId] = { totalScore: 0, count: 0 };
+                }
+                supervisorData[supId].totalScore += parseFloat(evalData.calificacionGeneral) || 0;
+                supervisorData[supId].count++;
+            });
+
+            const labels = [];
+            const data = [];
+            for (const supId in supervisorData) {
+                const supNombre = usersCache[supId]?.nombre || supId;
+                const avg = supervisorData[supId].count > 0 ? supervisorData[supId].totalScore / supervisorData[supId].count : 0;
+                labels.push(supNombre);
+                data.push(avg.toFixed(2));
+            }
+            
+            const ctx = document.getElementById('superAdminChart').getContext('2d');
+            if (superAdminChart) {
+                superAdminChart.destroy();
+            }
+            superAdminChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calificación Promedio del Equipo',
+                        data: data,
+                        backgroundColor: 'rgba(42, 106, 255, 0.6)',
+                        borderColor: 'rgba(42, 106, 255, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        async function renderAsesorCharts() {
+            const container = document.getElementById('tendencias-tab');
+            const year = document.getElementById('yearSelector').value;
+            const q = query(collection(db, "evaluations"), where("asesorId", "==", currentUser.id), where("year", "==", year));
+            const querySnapshot = await getDocs(q);
+
+            const monthlyScores = {}; // { Enero: 8.5, Febrero: 9.0 ... }
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                monthlyScores[evalData.month] = parseFloat(evalData.calificacionGeneral) || 0;
+            });
+
+            const labels = availablePeriods.months;
+            const data = labels.map(month => monthlyScores[month] || null);
+
+            container.innerHTML = `
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500">
+                     <h3 class="font-bold text-xl mb-4">📈 Mi Progreso Anual</h3>
+                     <div class="relative h-80">
+                        <canvas id="asesorChart"></canvas>
+                     </div>
+                </div>
+            `;
+            
+            const ctx = document.getElementById('asesorChart').getContext('2d');
+            if (asesorChart) {
+                asesorChart.destroy();
+            }
+            asesorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calificación General',
+                        data: data,
+                        borderColor: 'rgba(42, 106, 255, 1)',
+                        backgroundColor: 'rgba(42, 106, 255, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        spanGaps: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // ======================= NUEVAS FUNCIONES PARA INSIGNIAS =======================
+        
+        async function loadBadgesCache() {
+            badgesCache = {};
+            const querySnapshot = await getDocs(collection(db, "insignias"));
+            querySnapshot.forEach(doc => {
+                badgesCache[doc.id] = { id: doc.id, ...doc.data() };
+            });
+        }
+
+        function renderGlobalBadgesTable() {
+            const tbody = document.getElementById('globalBadgesTableBody');
+            tbody.innerHTML = '';
+            const globalBadges = Object.values(badgesCache).filter(b => b.tipo === 'global');
+            if (globalBadges.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-3">No hay insignias globales.</td></tr>`;
+            } else {
+                globalBadges.forEach(badge => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-4 py-2 text-2xl">${badge.icono}</td>
+                        <td class="px-4 py-2 font-medium">${badge.nombre}</td>
+                        <td class="px-4 py-2">
+                            <button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Editar</button>
+                            <button onclick="deleteBadge('${badge.id}')" class="text-red-600 hover:text-red-900 text-sm">Eliminar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+        
+        function renderSupervisorBadgesTable() {
+            const tbody = document.getElementById('supervisorBadgesTableBody');
+            tbody.innerHTML = '';
+            const supervisorBadges = Object.values(badgesCache).filter(b => b.creadorId === currentUser.id);
+            if (supervisorBadges.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-3">No has creado insignias.</td></tr>`;
+            } else {
+                supervisorBadges.forEach(badge => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'transition-colors';
+                    tr.innerHTML = `
+                        <td class="px-4 py-2 text-2xl">${badge.icono}</td>
+                        <td class="px-4 py-2 font-medium">${badge.nombre}</td>
+                        <td class="px-4 py-2">
+                             <button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Editar</button>
+                             <button onclick="deleteBadge('${badge.id}')" class="text-red-600 hover:text-red-900 text-sm">Eliminar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function openBadgeModal(badgeId = null, isGlobal = true) {
+            document.getElementById('badgeForm').reset();
+            document.getElementById('badgeId').value = badgeId || '';
+            document.getElementById('isGlobalBadge').value = isGlobal;
+
+            if (badgeId) {
+                const badge = badgesCache[badgeId];
+                document.getElementById('badgeModalTitle').textContent = 'Editar Insignia';
+                document.getElementById('badgeName').value = badge.nombre;
+                document.getElementById('badgeIcon').value = badge.icono;
+                document.getElementById('badgeDescription').value = badge.descripcion;
+            } else {
+                document.getElementById('badgeModalTitle').textContent = isGlobal ? 'Añadir Insignia Global' : 'Añadir Mi Insignia';
+            }
+            document.getElementById('badgeModal').classList.remove('hidden');
+        }
+
+        function closeBadgeModal() {
+            document.getElementById('badgeModal').classList.add('hidden');
+        }
+        
+        document.getElementById('badgeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const badgeId = document.getElementById('badgeId').value;
+            const isGlobal = document.getElementById('isGlobalBadge').value === 'true';
+
+            const badgeData = {
+                nombre: document.getElementById('badgeName').value,
+                icono: document.getElementById('badgeIcon').value,
+                descripcion: document.getElementById('badgeDescription').value,
+                tipo: isGlobal ? 'global' : 'supervisor',
+                creadorId: isGlobal ? null : currentUser.id,
+                updatedAt: serverTimestamp()
+            };
+
+            if (badgeId) {
+                await setDoc(doc(db, "insignias", badgeId), badgeData, { merge: true });
+            } else {
+                badgeData.createdAt = serverTimestamp();
+                await addDoc(collection(db, "insignias"), badgeData);
+            }
+
+            await loadBadgesCache();
+            if (isGlobal) {
+                renderGlobalBadgesTable();
+                showSyncIndicator('superAdminSyncIndicator');
+            } else {
+                renderSupervisorBadgesTable();
+                 showSyncIndicator('supervisorSyncIndicator');
+            }
+            closeBadgeModal();
+        });
+
+        async function deleteBadge(badgeId) {
+            showConfirmModal('Eliminar Insignia', '¿Estás seguro? Esta acción no se puede deshacer.', async () => {
+                await deleteDoc(doc(db, "insignias", badgeId));
+                await loadBadgesCache();
+                if (currentUser.rol === 'superadmin') {
+                    renderGlobalBadgesTable();
+                    showSyncIndicator('superAdminSyncIndicator');
+                } else {
+                    renderSupervisorBadgesTable();
+                    showSyncIndicator('supervisorSyncIndicator');
+                }
+            });
+        }
+        
+        async function openGrantBadgeModal() {
+            const listContainer = document.getElementById('grantBadgeList');
+            listContainer.innerHTML = '';
+
+            const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.id);
+            const existingBadges = currentEvaluationBadges; 
+
+            if (availableBadges.length === 0) {
+                 listContainer.innerHTML = '<p class="text-gray-500">No hay insignias disponibles para otorgar.</p>';
+            } else {
+                const globalBadges = availableBadges.filter(b => b.tipo === 'global');
+                const supervisorBadges = availableBadges.filter(b => b.creadorId === currentUser.id);
+
+                if(globalBadges.length > 0){
+                    listContainer.innerHTML += '<h4 class="font-bold text-gray-700 border-b pb-2 mb-2">🌐 Insignias Globales</h4>';
+                    globalBadges.forEach(badge => {
+                        listContainer.innerHTML += createBadgeCheckbox(badge, existingBadges);
+                    });
+                }
+                if(supervisorBadges.length > 0){
+                    listContainer.innerHTML += '<h4 class="font-bold text-gray-700 border-b pb-2 mb-2 mt-4">🧑‍🏫 Mis Insignias</h4>';
+                    supervisorBadges.forEach(badge => {
+                        listContainer.innerHTML += createBadgeCheckbox(badge, existingBadges);
+                    });
+                }
+            }
+            document.getElementById('grantBadgeModal').classList.remove('hidden');
+        }
+
+        function createBadgeCheckbox(badge, existingBadges) {
+            const isChecked = existingBadges.includes(badge.id);
+            return `
+                <div class="flex items-start p-3 border rounded-lg hover:bg-gray-50">
+                    <input type="checkbox" id="badge-check-${badge.id}" value="${badge.id}" class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded" ${isChecked ? 'checked' : ''}>
+                    <label for="badge-check-${badge.id}" class="ml-3 flex-grow cursor-pointer">
+                        <span class="text-3xl">${badge.icono}</span>
+                        <span class="font-bold ml-2">${badge.nombre}</span>
+                        <p class="text-sm text-gray-600">${badge.descripcion}</p>
+                    </label>
+                </div>
+            `;
+        }
+
+        function closeGrantBadgeModal() {
+            currentEvaluationBadges = [];
+            document.querySelectorAll('#grantBadgeList input[type="checkbox"]:checked').forEach(checkbox => {
+                currentEvaluationBadges.push(checkbox.value);
+            });
+            document.getElementById('grantBadgeModal').classList.add('hidden');
+        }
+
+        async function renderAsesorBadges() {
+            const container = document.getElementById('insignias-tab');
+            container.innerHTML = '<div class="skeleton h-64 w-full"></div>';
+
+            const q = query(collection(db, "evaluations"), where("asesorId", "==", currentUser.id));
+            const querySnapshot = await getDocs(q);
+
+            const earnedBadgeIds = new Set();
+            const badgeHistory = []; 
+
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                const period = `${evalData.month} ${evalData.year}`;
+                const supervisorName = usersCache[evalData.supervisorId]?.nombre || 'N/A';
+                (evalData.insigniasOtorgadas || []).forEach(badgeId => {
+                    earnedBadgeIds.add(badgeId);
+                    const badgeInfo = badgesCache[badgeId];
+                    if (badgeInfo) {
+                        badgeHistory.push({
+                            period: period,
+                            badge: badgeInfo,
+                            supervisor: supervisorName,
+                            date: new Date(evalData.year, availablePeriods.months.indexOf(evalData.month))
+                        });
+                    }
+                });
+            });
+            
+            const earnedBadges = Array.from(earnedBadgeIds).map(id => badgesCache[id]).filter(Boolean);
+            const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.supervisorAsignado);
+
+            let html = '<div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-orange-500">';
+            html += '<h3 class="font-bold text-xl mb-4">🏆 Mis Insignias Ganadas</h3>';
+            if (earnedBadges.length > 0) {
+                html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+                earnedBadges.forEach(badge => {
+                    const badgeType = badge.tipo === 'global' ? 'Global 🌐' : 'Equipo 🧑‍🏫';
+                    html += `
+                        <div class="border p-4 rounded-lg flex items-start space-x-4">
+                            <span class="text-4xl">${badge.icono}</span>
+                            <div>
+                                <h4 class="font-bold">${badge.nombre}</h4>
+                                <p class="text-sm text-gray-600 mb-2">${badge.descripcion}</p>
+                                <span class="text-xs font-semibold px-2 py-1 rounded-full ${badge.tipo === 'global' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}">${badgeType}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                 html += '<p class="text-gray-500">Aún no has ganado ninguna insignia. ¡Sigue esforzándote!</p>';
+            }
+
+            html += '<h3 class="font-bold text-xl mt-8 mb-4">📜 Historial de Reconocimientos</h3>';
+            if (badgeHistory.length > 0) {
+                badgeHistory.sort((a, b) => b.date - a.date);
+                html += `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Insignia</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Otorgada por</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                `;
+                badgeHistory.forEach(item => {
+                    html += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${item.period}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 flex items-center">
+                                <span class="text-2xl mr-2">${item.badge.icono}</span>
+                                ${item.badge.nombre}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.supervisor}</td>
+                        </tr>
+                    `;
+                });
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                html += '<p class="text-gray-500">No hay un historial de insignias todavía.</p>';
+            }
+
+            html += '<h3 class="font-bold text-xl mt-8 mb-4">🔓 Próximas Insignias</h3>';
+            const unearnedBadges = availableBadges.filter(b => !earnedBadgeIds.has(b.id));
+
+            if (unearnedBadges.length > 0) {
+                html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+                unearnedBadges.forEach(badge => {
+                    html += `
+                        <div class="border p-4 rounded-lg flex items-start space-x-4 opacity-60">
+                            <span class="text-4xl filter grayscale">${badge.icono}</span>
+                            <div>
+                                <h4 class="font-bold">${badge.nombre}</h4>
+                                <p class="text-sm text-gray-600">${badge.descripcion}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                 html += '<p class="text-gray-500">¡Felicidades! Has conseguido todas las insignias disponibles.</p>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ======================= EXPOSICIÓN DE FUNCIONES GLOBALES =======================
+        window.logout = logout;
+        window.openUserModal = openUserModal;
+        window.closeUserModal = closeUserModal;
+        window.deleteUser = deleteUser;
+        window.saveLoginTitles = saveLoginTitles;
+        window.saveAvailablePeriods = saveAvailablePeriods;
+        window.openCategoryModal = openCategoryModal;
+        window.closeCategoryModal = closeCategoryModal;
+        window.addCriterionInput = addCriterionInput;
+        window.deleteCategory = deleteCategory;
+        window.openEvaluationModal = openEvaluationModal;
+        window.closeEvaluationModal = closeEvaluationModal;
+        window.saveEvaluation = saveEvaluation;
+        window.switchAsesorTab = switchAsesorTab;
+        window.openAddAsesorModal = openAddAsesorModal; 
+        window.closeAddAsesorModal = closeAddAsesorModal;
+        window.toggleCriteria = toggleCriteria;
+        window.openImportModal = openImportModal;
+        window.closeImportModal = closeImportModal;
+        window.exportUsersToCSV = exportUsersToCSV;
+        window.exportSupervisorEvaluationsToCSV = exportSupervisorEvaluationsToCSV;
+        window.loadSuperAdminCharts = loadSuperAdminCharts;
+        window.loadSupervisorCharts = loadSupervisorCharts;
+        window.calculateWeightedScore = calculateWeightedScore;
+        window.sortUsers = sortUsers;
+        window.changeUserPage = changeUserPage;
+        // Insignias
+        window.openBadgeModal = openBadgeModal;
+        window.closeBadgeModal = closeBadgeModal;
+        window.deleteBadge = deleteBadge;
+        window.openGrantBadgeModal = openGrantBadgeModal;
+        window.closeGrantBadgeModal = closeGrantBadgeModal;
+        window.exportBadgesToCSV = exportBadgesToCSV;
+        // Sincronización Manual
+        window.forceSyncToFirebase = async () => {
+             showConfirmModal('Sincronizar a Firebase', 'Esto sobrescribirá los datos en Firebase con los datos locales actuales. ¿Continuar?', async () => {
+                showSyncIndicator('superAdminSyncIndicator');
+                try {
+                    const batch = writeBatch(db);
+
+                    Object.values(usersCache).forEach(user => {
+                        const { id, ...userData } = user;
+                        const userRef = doc(db, "users", id);
+                        batch.set(userRef, userData);
+                    });
+
+                    Object.values(badgesCache).forEach(badge => {
+                        const { id, ...badgeData } = badge;
+                        const badgeRef = doc(db, "insignias", id);
+                        batch.set(badgeRef, badgeData);
+                    });
+                    
+                    await batch.commit();
+                    alert('Sincronización completada exitosamente.');
+                } catch (error) {
+                    console.error("Error al forzar la sincronización:", error);
+                    alert("Hubo un error durante la sincronización. Revisa la consola.");
+                }
+            });
+        };
+        window.forceReloadFromFirebase = async () => {
+            showSyncIndicator('superAdminSyncIndicator');
+            await loadUsersCache();
+            await loadBadgesCache();
+            await loadSuperAdminView();
+            alert('Datos recargados desde Firebase.');
+        };
+
+
+    </script>
+</body>
+</html>
