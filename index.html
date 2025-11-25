@@ -695,13 +695,13 @@
 
         // Configuración de Firebase (proporcionada por el usuario)
         const firebaseConfig = {
-            apiKey: "AIzaSyDTRMoPteuAahoATZ1p5iXkj4XofBuaQ40",
-            authDomain: "pruebasdeinstrdeevaluacioncnci.firebaseapp.com",
-            projectId: "pruebasdeinstrdeevaluacioncnci",
-            storageBucket: "pruebasdeinstrdeevaluacioncnci.firebasestorage.app",
-            messagingSenderId: "194253696445",
-            appId: "1:194253696445:web:c93c7feb14da6b66ce76d4",
-            measurementId: "G-Q6DKY6ZS1Z"
+            apiKey: "AIzaSyDApFuzCg6bxKNniw7mTzcZAeAbwOV1mgY",
+            authDomain: "appevaluacionse.firebaseapp.com",
+            projectId: "appevaluacionse",
+            storageBucket: "appevaluacionse.appspot.com",
+            messagingSenderId: "52140253389",
+            appId: "1:52140253389:web:80fa2267b27d3472d78984",
+            measurementId: "G-QFHR58RGH8"
         };
 
         // Inicialización de Firebase
@@ -1575,6 +1575,7 @@
                 const calificacionGeneral = parseFloat(data.calificacionGeneral || 0);
                 const metaLlamadas = parseInt(data.metaLlamadas || 0);
 
+
                 resumenContainer.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-500">
@@ -1592,11 +1593,14 @@
                              </div>
                         </div>
                     </div>
-                    <div class="space-y-4 mb-6">${categoriesHTML}</div>
-                    <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-slate-400">
+
+                    <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-slate-400 mb-6">
                          <h3 class="font-bold text-lg mb-2">Comentarios Generales del Supervisor</h3>
                          <p class="text-sm text-gray-700">${data.comentariosGenerales || 'Sin comentarios generales.'}</p>
                     </div>
+
+                    <div class="space-y-4 mb-6">${categoriesHTML}</div>
+                    
                     <div class="mt-6 text-center">
                         <a href="${data.enlaceDetalles || '#'}" target="_blank" class="btn-primary inline-block text-white font-semibold py-3 px-8 rounded-lg">Ver Detalles de Evaluación</a>
                     </div>
