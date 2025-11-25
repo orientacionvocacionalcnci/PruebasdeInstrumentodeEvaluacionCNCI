@@ -547,11 +547,6 @@
                         <label class="block text-sm font-medium">Nombre de la Categoría</label>
                         <input type="text" id="categoryName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
                     </div>
-                        <label for="categoryCalculationMethod" class="block text-sm font-medium text-gray-700 mt-4">Método de Cálculo de Categoría</label>
-                        <select id="categoryCalculationMethod" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 input-focus mb-4" required>
-                            <option value="weighted">Ponderado (Usar ponderación de Grupos)</option>
-                            <option value="simple">Promedio Simple (Todos los grupos valen igual)</option>
-                        </select>                    
                     <div>
                         <label class="block text-sm font-medium">Ponderación (%)</label>
                         <input type="number" id="categoryPonderacion" min="0" max="100" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
@@ -1197,9 +1192,6 @@
                 document.getElementById('categoryId').value = index;
                 document.getElementById('categoryName').value = category.nombre;
                 document.getElementById('categoryPonderacion').value = category.ponderacion || 0;
-                // [NUEVA LÍNEA] Cargar el método de cálculo guardado
-                document.getElementById('categoryCalculationMethod').value = category.metodoCalculo || 'weighted'; // <--- AÑADIR
-                (category.criterios || []).forEach(c => addCriterionInput(c));
                 (category.criterios || []).forEach(c => addCriterionInput(c));
             } else {
                 document.getElementById('categoryModalTitle').textContent = 'Añadir Categoría';
@@ -1230,7 +1222,6 @@
             const newCategory = {
                 nombre: document.getElementById('categoryName').value,
                 ponderacion: parseInt(document.getElementById('categoryPonderacion').value) || 0,
-                metodoCalculo: document.getElementById('categoryCalculationMethod').value, 
                 criterios: [...document.querySelectorAll('#criteriaInputs input')].map(input => input.value).filter(val => val)
             };
             
@@ -1303,6 +1294,7 @@
                 return;
             }
             const template = templateDoc.data().categorias;
+
             const evalId = `${asesorId}_${year}_${month}`;
             const evalDoc = await getDoc(doc(db, "evaluations", evalId));
             const existingData = evalDoc.exists() ? evalDoc.data() : {};
@@ -1344,50 +1336,25 @@
             `;
             
             template.forEach(cat => {
-            // DENTRO de template.forEach(cat => {
-            
-                const categoryId = cat.id || cat.name.replace(/\s/g, '-'); 
-            
-                // Aquí se lee el método y se inyecta en el data-attribute (EL CAMBIO CLAVE)
-                let categoryHtml = `
-                    <div class="category-block mb-6 p-4 border rounded-lg shadow-sm" data-category-id="${categoryId}" data-category-ponderacion="${cat.ponderacion}" data-category-method="${cat.metodoCalculo || 'weighted'}">
-                        <h3 class="text-xl font-bold mb-3 text-blue-700">${cat.name} (${cat.ponderacion}%)</h3>
-                        
-                        <div class="space-y-4 mt-3">
-                        ${(cat.grupos || []).map(group => {
-                            const groupId = group.id || `${categoryId}-${group.name.replace(/\s/g, '-')}`;
-                            
-                            // Buscar puntajes existentes, si los hay
-                            const existingGroupData = existingData.categoriasEvaluadas && existingData.categoriasEvaluadas[categoryId] 
-                                                    ? existingData.categoriasEvaluadas[categoryId].gruposEvaluados[groupId] || {} 
-                                                    : {};
-            
-                            return `
-                                <div class="group-block p-3 border-l-4 border-blue-400 bg-white" data-group-id="${groupId}" data-group-ponderacion="${group.ponderacion}">
-                                    <h4 class="font-semibold text-gray-800">${group.name} (${group.ponderacion}%)</h4>
-                                    <div class="mt-2 space-y-2">
-                                    ${(group.criterios || []).map((criterion, index) => {
-                                        const criterionId = `${groupId}-c-${index}`;
-                                        // Cargar puntaje guardado
-                                        const savedScore = existingGroupData.scores ? existingGroupData.scores[index] || 0 : 0; 
-                                        
-                                        return `
-                                            <div class="flex items-center space-x-2">
-                                                <label for="${criterionId}" class="flex-grow text-sm">${criterion}</label>
-                                                <input type="number" id="${criterionId}" min="0" max="10" value="${savedScore}" 
-                                                    oninput="calculateWeightedScore()" class="criterion-score-input w-16 p-1 border rounded text-center">
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                    </div>
-                                    <p class="mt-3 text-sm font-medium">Promedio Simple del Grupo: <span id="group-avg-${groupId}" class="text-blue-600 font-bold">0.00</span></p>
-                                </div>
-                            `;
-                        }).join('')}
-                        </div>
-            
-                        <div class="mt-4 pt-3 border-t">
-                            <p class="font-semibold text-base">Puntaje de Categoría (0-10): <span id="cat-score-${categoryId}" class="text-indigo-600 font-bold">0.00</span></p>
+                const catData = existingData.categoriasEvaluadas ? existingData.categoriasEvaluadas[cat.nombre] || {} : {};
+                const criteriaHTML = cat.criterios.map(crit => `
+                     <div class="grid grid-cols-3 gap-2 items-center">
+                        <label class="text-sm col-span-2">${crit}</label>
+                        <input type="number" min="0" max="10" data-category="${cat.nombre}" data-criterion="${crit}" value="${(catData.criterios && catData.criterios[crit] !== undefined) ? catData.criterios[crit] : ''}" class="criterion-score w-full p-1 border rounded-lg text-center">
+                     </div>
+                `).join('');
+
+                container.innerHTML += `
+                    <div class="p-4 border rounded-lg">
+                        <h4 class="font-bold">${cat.nombre}</h4>
+                        <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">${criteriaHTML}</div>
+                            <div>
+                                <label class="block text-sm font-medium">Comentarios (Calidad)</label>
+                                <textarea data-category="${cat.nombre}" name="comment_calidad" rows="2" class="mt-1 w-full p-2 border rounded-lg">${catData.comentarioCalidad || ''}</textarea>
+                                <label class="block text-sm font-medium mt-2">Comentarios (Supervisión)</label>
+                                <textarea data-category="${cat.nombre}" name="comment_supervision" rows="2" class="mt-1 w-full p-2 border rounded-lg">${catData.comentarioSupervision || ''}</textarea>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2038,81 +2005,44 @@ async function importUsersFromCSV(csvData) {
 
 
         // ======================= LÓGICA DE CÁLCULO DE PUNTAJES =======================
-const calculateWeightedScore = () => {
-    let finalScore = 0;
-    let totalPonderacion = 0;
-
-    document.querySelectorAll('.category-block').forEach(categoryBlock => {
-        // 1. OBTENER DATOS DE LA CATEGORÍA
-        const catPonderacion = parseFloat(categoryBlock.getAttribute('data-category-ponderacion')) / 100;
-        const catCalculationMethod = categoryBlock.getAttribute('data-category-method'); // <--- Leer el método guardado
-
-        let categoryScore = 0;
-        const groupBlocks = categoryBlock.querySelectorAll('.group-block');
         
-        // Variables para los dos métodos de cálculo
-        let totalGroupScorePonderado = 0;
-        let totalGroupScoreSimple = 0;
-        let groupCountSimple = 0;
+        async function calculateWeightedScore() {
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            if (!templateDoc.exists()) return;
+            
+            const templateCategories = templateDoc.data().categorias || [];
+            let finalWeightedScore = 0;
 
-        groupBlocks.forEach(groupBlock => {
-            const groupPonderacion = parseFloat(groupBlock.getAttribute('data-group-ponderacion')) / 100;
-            const scoreInputs = groupBlock.querySelectorAll('.criterion-score-input');
-            let groupScoresSum = 0;
-            let count = 0;
+            templateCategories.forEach(cat => {
+                const ponderacion = cat.ponderacion || 0;
+                const criteriaInputs = document.querySelectorAll(`#evaluationModal input[data-category="${cat.nombre}"].criterion-score`);
+                
+                let totalScore = 0;
+                let scoreCount = 0;
 
-            // Calcular el promedio simple de los criterios dentro del grupo
-            scoreInputs.forEach(input => {
-                const score = parseFloat(input.value) || 0;
-                groupScoresSum += score;
-                count++;
+                criteriaInputs.forEach(input => {
+                    if (input.value !== '') {
+                        const score = parseFloat(input.value);
+                        if (!isNaN(score) && score >= 0 && score <= 10) {
+                            totalScore += score;
+                            scoreCount++;
+                        }
+                    }
+                });
+
+                if (scoreCount > 0) {
+                    const categoryAverage = totalScore / scoreCount;
+                    const weightedContribution = (categoryAverage / 100) * ponderacion;
+                    finalWeightedScore += weightedContribution;
+                }
             });
 
-            const groupAvgScore = count > 0 ? groupScoresSum / count : 0;
-            
-            // Actualizar el Promedio Simple del Grupo en el HTML
-            const groupAvgSpan = document.getElementById(`group-avg-${groupBlock.getAttribute('data-group-id')}`);
-            if (groupAvgSpan) {
-                groupAvgSpan.textContent = groupAvgScore.toFixed(2);
+            const finalScoreOutOf10 = finalWeightedScore.toFixed(1);
+            const scoreInput = document.getElementById('evalGeneralScore');
+            if (scoreInput) {
+                scoreInput.value = finalScoreOutOf10;
             }
-
-            // 2. ACUMULAR PUNTAJES PARA AMBOS MÉTODOS DE CÁLCULO
-            
-            // Acumulación PONDERADA: (Promedio del grupo * Ponderación del grupo)
-            totalGroupScorePonderado += groupAvgScore * groupPonderacion;
-            
-            // Acumulación SIMPLE: (Suma de promedios de grupo)
-            totalGroupScoreSimple += groupAvgScore;
-            groupCountSimple++;
-        });
-
-        // 3. LÓGICA CONDICIONAL: ASIGNAR LA NOTA FINAL DE LA CATEGORÍA
-        if (catCalculationMethod === 'simple') {
-            // MÉTODO SIMPLE: Promedio simple de todos los grupos (cada grupo vale lo mismo)
-            categoryScore = groupCountSimple > 0 ? totalGroupScoreSimple / groupCountSimple : 0;
-        } else {
-            // MÉTODO PONDERADO (o por defecto): Suma de los puntajes ponderados por grupo
-            categoryScore = totalGroupScorePonderado;
         }
-
-        // Mostrar el puntaje de la categoría
-        const catScoreSpan = document.getElementById(`cat-score-${categoryBlock.getAttribute('data-category-id')}`);
-        if (catScoreSpan) {
-            catScoreSpan.textContent = categoryScore.toFixed(2);
-        }
-
-        // 4. Sumar a la calificación final (SIEMPRE ponderado por la categoría)
-        finalScore += categoryScore * catPonderacion;
-        totalPonderacion += catPonderacion;
-    });
-
-    // Mostrar el puntaje general
-    const evalGeneralScoreInput = document.getElementById('evalGeneralScore');
-    if (evalGeneralScoreInput) {
-        // La nota final se divide por la ponderación total (que debería ser 1.0)
-        evalGeneralScoreInput.value = (totalPonderacion > 0 ? finalScore / totalPonderacion : 0).toFixed(2);
-    }
-};
 
         // ======================= NUEVAS FUNCIONES PARA GRÁFICOS =======================
 
