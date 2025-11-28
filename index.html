@@ -128,6 +128,27 @@
         #usersTableBody tr:hover {
              background-color: #f7fafc; /* bg-gray-50 */
         }
+        /* ================= ESTILOS DRAG AND DROP ================= */
+        /* El elemento que se arrastra */
+        .draggable-criterion {
+            cursor: move; /* Cambia el cursor a la manita de mover */
+            transition: all 0.2s ease;
+        }
+        
+        /* Efecto visual mientras lo arrastras (se pone semitransparente) */
+        .draggable-criterion.dragging {
+            opacity: 0.5;
+            background-color: #eff6ff; /* Azul muy claro */
+            border: 1px dashed #6366f1; /* Borde punteado índigo */
+        }
+        
+        /* La zona de destino (el grupo) cuando le pasas un elemento por encima */
+        .criteria-list.drag-over {
+            background-color: #f0fdf4; /* Verde muy claro */
+            border: 2px dashed #22c55e; /* Borde verde */
+            min-height: 50px; /* Asegura espacio para soltar aunque esté vacío */
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -1217,12 +1238,70 @@
             }
             updatePonderacionTotal();
         }
-        // ======================= HELPERS PARA GESTIÓN DE GRUPOS (V2) =======================
+        // ======================= LÓGICA DE DRAG AND DROP =======================
+        
+        let draggedElement = null;
 
+        // Función que conecta un elemento individual con los eventos de arrastre
+        function addDragEvents(element) {
+            element.addEventListener('dragstart', handleDragStart);
+            element.addEventListener('dragend', handleDragEnd);
+        }
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging'); // Añade la clase visual
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging'); // Quita la clase visual
+            draggedElement = null;
+            
+            // Limpiar clases visuales de "destino" de todas las listas
+            document.querySelectorAll('.criteria-list').forEach(list => {
+                list.classList.remove('drag-over');
+            });
+        }
+
+        // Configura las zonas donde se pueden SOLTAR los elementos (las listas)
+        function setupDropZones() {
+            // Usamos delegación de eventos en el documento para detectar las listas dinámicas
+            document.addEventListener('dragover', (e) => {
+                const list = e.target.closest('.criteria-list');
+                if (list) {
+                    e.preventDefault(); // Necesario para permitir soltar
+                    list.classList.add('drag-over');
+                }
+            });
+
+            document.addEventListener('dragleave', (e) => {
+                const list = e.target.closest('.criteria-list');
+                if (list) {
+                    list.classList.remove('drag-over');
+                }
+            });
+
+            document.addEventListener('drop', (e) => {
+                const list = e.target.closest('.criteria-list');
+                if (list && draggedElement) {
+                    e.preventDefault();
+                    list.classList.remove('drag-over');
+                    
+                    // Mover el elemento arrastrado al nuevo contenedor
+                    list.appendChild(draggedElement);
+                }
+            });
+        }
+        
+        // Ejecutamos esto una vez al inicio para activar las zonas de caída
+        setupDropZones();
+        // ======================= HELPERS PARA GESTIÓN DE GRUPOS (V2) =======================
         // Genera el HTML de un bloque de grupo
         function addGroupBlock(groupData = null) {
             const container = document.getElementById('groupsContainer');
-            const groupId = Date.now() + Math.random().toString(36).substr(2, 9); // ID único temporal para el DOM
+            const groupId = Date.now() + Math.random().toString(36).substr(2, 9); 
             
             const nombre = groupData ? groupData.nombre : '';
             const ponderacion = groupData ? groupData.ponderacion : '';
@@ -1244,9 +1323,11 @@
                     </div>
 
                     <div class="bg-white p-3 rounded border border-gray-200">
-                        <label class="block text-xs font-semibold text-gray-400 mb-2">CRITERIOS (0-10)</label>
-                        <div class="criteria-list space-y-2">
+                        <label class="block text-xs font-semibold text-gray-400 mb-2">CRITERIOS (0-10) - Arrastra para mover</label>
+                        
+                        <div class="criteria-list space-y-2 min-h-[50px] p-2 border border-dashed border-transparent transition-colors rounded">
                             </div>
+                        
                         <button type="button" onclick="addCriterionToGroup('${groupId}')" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
                             + Añadir Criterio
                         </button>
@@ -1256,11 +1337,9 @@
             
             container.insertAdjacentHTML('beforeend', groupHtml);
 
-            // Si hay datos (edición), añadir los criterios existentes
             if (criterios && criterios.length > 0) {
                 criterios.forEach(crit => addCriterionToGroup(groupId, crit));
             } else if (!groupData) {
-                // Si es nuevo grupo, añadir un criterio vacío por defecto
                 addCriterionToGroup(groupId);
             }
         }
@@ -1271,12 +1350,23 @@
             const listContainer = groupBlock.querySelector('.criteria-list');
             
             const div = document.createElement('div');
-            div.className = 'flex items-center space-x-2';
+            
+            // CAMBIO 1: Añadimos la clase 'draggable-criterion' y estilos de hover
+            div.className = 'draggable-criterion flex items-center space-x-2 p-1 rounded hover:bg-gray-100';
+            
+            // CAMBIO 2: Hacemos el elemento arrastrable
+            div.setAttribute('draggable', 'true');
+            
+            // CAMBIO 3: Añadimos un icono visual (⋮⋮) para indicar que se puede mover
             div.innerHTML = `
-                <div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                <div class="cursor-move text-gray-400 mr-1" title="Arrastrar para mover">⋮⋮</div>
                 <input type="text" class="criterion-input w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none py-1 text-sm text-gray-700 bg-transparent" placeholder="Escribe un criterio..." value="${value}" required>
                 <button type="button" onclick="this.parentElement.remove()" class="text-gray-400 hover:text-red-500 text-lg leading-none">&times;</button>
             `;
+            
+            // CAMBIO 4: Conectamos este nuevo elemento a la lógica de arrastre del Paso 2
+            addDragEvents(div);
+
             listContainer.appendChild(div);
         }
         async function openCategoryModal(index = null) {
