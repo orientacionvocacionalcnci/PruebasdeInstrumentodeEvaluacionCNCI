@@ -2889,9 +2889,15 @@ async function importUsersFromCSV(csvData) {
         window.deleteUser = deleteUser;
         window.saveLoginTitles = saveLoginTitles;
         window.saveAvailablePeriods = saveAvailablePeriods;
+        
+        // --- AQUÍ ESTABAN FALTANDO LAS FUNCIONES NUEVAS DE GRUPOS ---
         window.openCategoryModal = openCategoryModal;
         window.closeCategoryModal = closeCategoryModal;
-        window.addCriterionInput = addCriterionInput;
+        window.addGroupBlock = addGroupBlock;             // <--- FALTABA ESTA
+        window.addCriterionToGroup = addCriterionToGroup; // <--- FALTABA ESTA
+        window.submitCategoryForm = submitCategoryForm;   // <--- FALTABA ESTA
+        // ------------------------------------------------------------
+
         window.deleteCategory = deleteCategory;
         window.openEvaluationModal = openEvaluationModal;
         window.closeEvaluationModal = closeEvaluationModal;
@@ -2916,6 +2922,7 @@ async function importUsersFromCSV(csvData) {
         window.openGrantBadgeModal = openGrantBadgeModal;
         window.closeGrantBadgeModal = closeGrantBadgeModal;
         window.exportBadgesToCSV = exportBadgesToCSV;
+        
         // Sincronización Manual
         window.forceSyncToFirebase = async () => {
              showConfirmModal('Sincronizar a Firebase', 'Esto sobrescribirá los datos en Firebase con los datos locales actuales. ¿Continuar?', async () => {
