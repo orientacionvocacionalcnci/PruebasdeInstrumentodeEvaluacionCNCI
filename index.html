@@ -2037,13 +2037,22 @@
                 alert("No se puede exportar porque no tienes una plantilla de evaluación definida.");
                 return;
             }
-            const template = templateDoc.data().categorias || [];
+            
+            // 1. NORMALIZAMOS para asegurar que leemos la estructura de grupos
+            const template = normalizeCategories(templateDoc.data().categorias || []);
+            
+            // 2. Construir Encabezados
             let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
+            
             template.forEach(cat => {
-                cat.criterios.forEach(crit => {
-                    const cleanCrit = crit.replace(/"/g, '""'); 
-                    headers.push(`"${cat.nombre}_${cleanCrit}_Puntaje"`);
+                cat.grupos.forEach(grupo => {
+                    grupo.criterios.forEach(crit => {
+                        const cleanCrit = crit.replace(/"/g, '""');
+                        // Formato de cabecera: "Categoria - Grupo - Criterio"
+                        headers.push(`"${cat.nombre} - ${grupo.nombre} - ${cleanCrit}"`);
+                    });
                 });
+                // Los comentarios siguen siendo por categoría
                 headers.push(`"${cat.nombre}_ComentarioCalidad"`, `"${cat.nombre}_ComentarioSupervision"`);
             });
             
@@ -2052,6 +2061,7 @@
 
             let csvContent = headers.join(',') + '\n';
 
+            // 3. Construir Filas
             evaluationsSnapshot.forEach(doc => {
                 const e = doc.data();
                 const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
@@ -2067,10 +2077,15 @@
 
                 template.forEach(cat => {
                     const catData = e.categoriasEvaluadas ? e.categoriasEvaluadas[cat.nombre] || {} : {};
-                    cat.criterios.forEach(crit => {
-                        const score = catData.criterios ? catData.criterios[crit] || '' : '';
-                        row.push(score);
+                    
+                    cat.grupos.forEach(grupo => {
+                        grupo.criterios.forEach(crit => {
+                            // Buscamos el puntaje del criterio (guardado plano en el objeto de evaluación)
+                            const score = catData.criterios ? catData.criterios[crit] || '' : '';
+                            row.push(score);
+                        });
                     });
+
                     row.push(`"${(catData.comentarioCalidad || '').replace(/"/g, '""')}"`);
                     row.push(`"${(catData.comentarioSupervision || '').replace(/"/g, '""')}"`);
                 });
@@ -2130,51 +2145,51 @@
             reader.readAsText(file, "UTF-8");
         });
 
-async function importUsersFromCSV(csvData) {
-    const overwrite = document.getElementById('overwriteDataCheckbox').checked;
-    const lines = csvData.split('\n').filter(line => line.trim());
-    if (lines.length < 2) {
-        alert('El archivo CSV está vacío o solo contiene la cabecera.');
-        return;
-    }
-    
-    const headers = parseCSVLine(lines[0]);
-    const batch = writeBatch(db);
-    let operationsCount = 0;
-
-    try {
-    const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
-
-    for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        
-        const record = cleanHeaders.reduce((obj, header, index) => {
-            obj[header] = values[index] || ''; 
-            return obj;
-        }, {});
-
-            if (!record.username) continue;
-            const userRef = doc(db, "users", record.username);
-            const userData = {
-                nombre: record.nombre || '',
-                rol: record.rol || 'asesor',
-                password: record.password || '123',
-                supervisorAsignado: record.supervisorAsignado || null
-            };
+        async function importUsersFromCSV(csvData) {
+            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+            const lines = csvData.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                alert('El archivo CSV está vacío o solo contiene la cabecera.');
+                return;
+            }
             
-            batch.set(userRef, userData, { merge: !overwrite });
-            operationsCount++;
+            const headers = parseCSVLine(lines[0]);
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            try {
+            const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                
+                const record = cleanHeaders.reduce((obj, header, index) => {
+                    obj[header] = values[index] || ''; 
+                    return obj;
+                }, {});
+
+                    if (!record.username) continue;
+                    const userRef = doc(db, "users", record.username);
+                    const userData = {
+                        nombre: record.nombre || '',
+                        rol: record.rol || 'asesor',
+                        password: record.password || '123',
+                        supervisorAsignado: record.supervisorAsignado || null
+                    };
+                    
+                    batch.set(userRef, userData, { merge: !overwrite });
+                    operationsCount++;
+                }
+                await batch.commit();
+                alert(`Se han procesado ${operationsCount} registros de usuarios.`);
+                closeImportModal();
+                await loadUsersCache();
+                renderUsersTable();
+            } catch (error) {
+                console.error("Error al importar usuarios CSV:", error);
+                alert("Error al importar el archivo de usuarios. Revisa la consola.");
+            }
         }
-        await batch.commit();
-        alert(`Se han procesado ${operationsCount} registros de usuarios.`);
-        closeImportModal();
-        await loadUsersCache();
-        renderUsersTable();
-    } catch (error) {
-        console.error("Error al importar usuarios CSV:", error);
-        alert("Error al importar el archivo de usuarios. Revisa la consola.");
-    }
-}
 
         async function importSupervisorEvaluationsFromCSV(csvData) {
             const overwrite = document.getElementById('overwriteDataCheckbox').checked;
@@ -2183,7 +2198,9 @@ async function importUsersFromCSV(csvData) {
                 alert("No se puede importar porque no tienes una plantilla de evaluación definida.");
                 return;
             }
-            const template = templateDoc.data().categorias || [];
+            
+            // 1. NORMALIZAR PLANTILLA
+            const template = normalizeCategories(templateDoc.data().categorias || []);
             
             const lines = csvData.split('\n').filter(line => line.trim());
             if (lines.length < 2) {
@@ -2191,15 +2208,17 @@ async function importUsersFromCSV(csvData) {
                 return;
             }
 
-            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+            // Usamos tu función parseCSVLine para leer cabeceras complejas correctamente
+            const headers = parseCSVLine(lines[0]); 
             const batch = writeBatch(db);
             let operationsCount = 0;
 
             try {
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].trim().split(',');
+                    const values = parseCSVLine(lines[i]);
                     const record = headers.reduce((obj, header, index) => {
-                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                        // Limpiamos comillas extra si las hubiera
+                        obj[header.replace(/^"|"$/g, '')] = values[index] ? values[index].replace(/^"|"$/g, '') : '';
                         return obj;
                     }, {});
 
@@ -2216,42 +2235,59 @@ async function importUsersFromCSV(csvData) {
                         categoriasEvaluadas: {}
                     };
 
+                    let finalWeightedScore = 0;
+
+                    // 2. Reconstruir datos usando la estructura de GRUPOS
                     template.forEach(cat => {
                         const catName = cat.nombre;
                         const catData = { criterios: {}, puntaje: 0, comentarioCalidad: '', comentarioSupervision: '' };
-                        let totalScore = 0;
-                        let scoreCount = 0;
+                        
+                        let catTotalWeightedScore = 0;
 
-                        cat.criterios.forEach(crit => {
-                            const score = parseFloat(record[`${catName}_${crit}_Puntaje`]);
-                            if (!isNaN(score)) {
-                                catData.criterios[crit] = score;
-                                totalScore += score;
-                                scoreCount++;
+                        cat.grupos.forEach(grupo => {
+                            let grupoSum = 0;
+                            let grupoCount = 0;
+
+                            grupo.criterios.forEach(crit => {
+                                // Reconstruimos la clave del CSV: "Categoria - Grupo - Criterio"
+                                const csvKey = `${cat.nombre} - ${grupo.nombre} - ${crit}`;
+                                // Intentamos leer el valor
+                                const val = record[csvKey]; 
+                                
+                                if (val && val !== '') {
+                                    const score = parseFloat(val);
+                                    if (!isNaN(score)) {
+                                        catData.criterios[crit] = score;
+                                        grupoSum += score;
+                                        grupoCount++;
+                                    }
+                                }
+                            });
+
+                            // Calcular aporte del grupo (Lógica V2)
+                            if (grupoCount > 0) {
+                                const grupoAvg = grupoSum / grupoCount;
+                                const grupoContribution = grupoAvg * (parseFloat(grupo.ponderacion || 0) / 100);
+                                catTotalWeightedScore += grupoContribution;
                             }
                         });
                         
-                        if (scoreCount > 0) catData.puntaje = (totalScore / scoreCount).toFixed(2);
+                        // Asignar puntaje calculado y comentarios
+                        catData.puntaje = catTotalWeightedScore.toFixed(2);
                         catData.comentarioCalidad = record[`${catName}_ComentarioCalidad`] || '';
                         catData.comentarioSupervision = record[`${catName}_ComentarioSupervision`] || '';
+                        
                         evalData.categoriasEvaluadas[catName] = catData;
+
+                        // Sumar a la calificación general
+                        finalWeightedScore += catTotalWeightedScore * (parseFloat(cat.ponderacion || 0) / 100);
                     });
-                let finalWeightedScore = 0;
 
-                template.forEach(cat => {
-                    const ponderacion = cat.ponderacion || 0;
-                    const catData = evalData.categoriasEvaluadas[cat.nombre];
-
-                    if (catData && catData.puntaje) {
-                        const categoryAverage = parseFloat(catData.puntaje);
-                        const weightedContribution = (categoryAverage / 10) * ponderacion;
-                        finalWeightedScore += weightedContribution;
+                    // Si el CSV no traía calificación general, la calculamos nosotros
+                    if (!evalData.calificacionGeneral || evalData.calificacionGeneral === '') {
+                        evalData.calificacionGeneral = finalWeightedScore.toFixed(2);
                     }
-                });
 
-                if (!evalData.calificacionGeneral) {
-                    evalData.calificacionGeneral = (finalWeightedScore / 10).toFixed(1);
-                }
                     batch.set(evalRef, evalData, { merge: !overwrite });
                     operationsCount++;
                 }
@@ -2262,30 +2298,39 @@ async function importUsersFromCSV(csvData) {
 
             } catch(error) {
                 console.error("Error al importar evaluaciones CSV:", error);
-                alert("Error al importar el archivo de evaluaciones. Revisa la consola y asegúrate que el formato coincida con tu plantilla.");
+                alert("Error al importar: " + error.message);
             }
         }
         
         async function importBadgesFromCSV(csvData) {
             const overwrite = document.getElementById('overwriteDataCheckbox').checked;
             const lines = csvData.split('\n').filter(line => line.trim());
-             if (lines.length < 2) {
+            if (lines.length < 2) {
                 alert('El archivo CSV de insignias está vacío o solo contiene la cabecera.');
                 return;
             }
-            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+
+            // MEJORA: Usar parseCSVLine en lugar de split(',') para mayor seguridad
+            const headers = parseCSVLine(lines[0]); 
             const batch = writeBatch(db);
             let operationsCount = 0;
 
             try {
+                // Limpiamos comillas de las cabeceras
+                const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
+
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].trim().split(',');
-                    const record = headers.reduce((obj, header, index) => {
-                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                    // MEJORA: Usar parseCSVLine para los valores también
+                    const values = parseCSVLine(lines[i]); 
+                    
+                    const record = cleanHeaders.reduce((obj, header, index) => {
+                        // Limpiamos comillas de los valores
+                        obj[header] = values[index] ? values[index].replace(/^"|"$/g, '') : '';
                         return obj;
                     }, {});
 
                     if (!record.id) continue;
+                    
                     const badgeRef = doc(db, "insignias", record.id);
                     const badgeData = {
                         nombre: record.nombre || '',
@@ -2302,7 +2347,7 @@ async function importUsersFromCSV(csvData) {
                 alert(`Se han procesado ${operationsCount} registros de insignias.`);
                 closeImportModal();
                 await loadBadgesCache();
-                renderGlobalBadgesTable();
+                if (typeof renderGlobalBadgesTable === 'function') renderGlobalBadgesTable(); // Validación extra por seguridad
             } catch (error) {
                 console.error("Error al importar insignias CSV:", error);
                 alert("Error al importar el archivo de insignias. Revisa la consola.");
