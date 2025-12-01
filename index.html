@@ -295,6 +295,15 @@
                                         <button onclick="openImportModal('badges')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
                                     </div>
                                 </div>
+                                <div class="mt-4 border-t pt-4">
+                                    <h4 class="text-sm font-medium">Evaluaciones (Filtros Avanzados)</h4>
+                                    <div class="mt-1">
+                                        <button onclick="openMassExportModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm flex justify-center items-center shadow transition-colors">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            Exportar Personalizada
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                          <!-- Gestión de Insignias Globales -->
@@ -714,7 +723,58 @@
             </div>
         </div>
     </div>
+<div id="massExportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 flex flex-col max-h-[90vh]">
+            <div class="border-b pb-3 mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Exportar Evaluaciones</h3>
+                <p class="text-sm text-gray-500">Selecciona los supervisores y asesores específicos que deseas respaldar.</p>
+            </div>
+            
+            <form id="massExportForm" class="flex-grow flex flex-col overflow-hidden">
+                <div class="grid grid-cols-2 gap-4 mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <div>
+                        <label class="block text-xs font-bold text-blue-800 uppercase">Mes</label>
+                        <select id="massExportMonth" class="mt-1 w-full border border-blue-200 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Todos los meses</option>
+                            </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-blue-800 uppercase">Año</label>
+                        <select id="massExportYear" class="mt-1 w-full border border-blue-200 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                            </select>
+                    </div>
+                </div>
 
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <label class="block text-sm font-bold text-gray-700">Selección de Equipo</label>
+                    <div class="space-x-3 text-xs">
+                        <button type="button" onclick="toggleTree(true)" class="text-blue-600 hover:underline">Expandir Todo</button>
+                        <span class="text-gray-300">|</span>
+                        <button type="button" onclick="toggleTree(false)" class="text-blue-600 hover:underline">Contraer Todo</button>
+                    </div>
+                </div>
+                
+                <div id="exportTreeContainer" class="border rounded-lg overflow-y-auto flex-grow bg-gray-50 p-2 space-y-2" style="min-height: 200px;">
+                    <div class="flex items-center justify-center h-full text-gray-400">
+                        <p>Cargando estructura...</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-6 mt-auto border-t">
+                    <div class="text-xs text-gray-500">
+                        <span id="selectionCount">0</span> asesores seleccionados
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="document.getElementById('massExportModal').classList.add('hidden')" class="bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-50">Cancelar</button>
+                        <button type="submit" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg shadow-md flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Generar Archivos
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
     <script type="module" defer>
@@ -3017,6 +3077,256 @@
                 };
             });
         }
+        // ======================= LÓGICA DE EXPORTACIÓN MASIVA AVANZADA =======================
+
+        let selectedTreeData = {}; // Estructura para guardar selección: { 'supId': ['asesorId1', 'asesorId2'] }
+
+        function openMassExportModal() {
+            const modal = document.getElementById('massExportModal');
+            const treeContainer = document.getElementById('exportTreeContainer');
+            const monthSelect = document.getElementById('massExportMonth');
+            const yearSelect = document.getElementById('massExportYear');
+
+            // 1. Llenar selectores de fecha
+            yearSelect.innerHTML = '<option value="all">Todos los años</option>' + availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            monthSelect.innerHTML = '<option value="all">Todos los meses</option>' + availablePeriods.months.map(m => `<option value="${m}">${m}</option>`).join('');
+
+            // 2. Construir el Árbol de Selección
+            treeContainer.innerHTML = '';
+            
+            if (supervisorsCache.length === 0) {
+                treeContainer.innerHTML = '<div class="text-center p-4 text-gray-500">No hay supervisores registrados.</div>';
+            } else {
+                // Ordenar supervisores alfabéticamente
+                const sortedSupervisors = [...supervisorsCache].sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+                sortedSupervisors.forEach(sup => {
+                    // Obtener asesores de este supervisor
+                    const teamMembers = Object.values(usersCache)
+                        .filter(u => u.supervisorAsignado === sup.id)
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+                    // Crear bloque del supervisor (Padre)
+                    const supBlock = document.createElement('div');
+                    supBlock.className = 'mb-1';
+                    
+                    const headerHtml = `
+                        <div class="flex items-center p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors">
+                            <button type="button" onclick="toggleNode('${sup.id}')" class="mr-2 text-gray-400 hover:text-gray-600 focus:outline-none">
+                                <svg id="icon-${sup.id}" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                            <input type="checkbox" id="check-${sup.id}" onchange="toggleSupervisor('${sup.id}')" class="supervisor-check h-4 w-4 text-blue-600 rounded border-gray-300 mr-2">
+                            <label for="check-${sup.id}" class="flex-grow cursor-pointer select-none">
+                                <span class="font-bold text-sm text-gray-700">${sup.nombre}</span>
+                                <span class="text-xs text-gray-400 ml-1">(${teamMembers.length} asesores)</span>
+                            </label>
+                        </div>
+                    `;
+
+                    // Crear lista de asesores (Hijos) - Oculta por defecto
+                    let childrenHtml = `<div id="node-${sup.id}" class="hidden ml-6 mt-1 space-y-1 border-l-2 border-gray-100 pl-2">`;
+                    
+                    if (teamMembers.length === 0) {
+                        childrenHtml += `<div class="text-xs text-gray-400 italic py-1 pl-2">Sin asesores asignados</div>`;
+                    } else {
+                        teamMembers.forEach(asesor => {
+                            childrenHtml += `
+                                <div class="flex items-center p-1 hover:bg-blue-50 rounded">
+                                    <input type="checkbox" value="${asesor.id}" data-supervisor="${sup.id}" onchange="updateParentState('${sup.id}')" class="asesor-check h-3 w-3 text-indigo-500 rounded border-gray-300 mr-2">
+                                    <span class="text-sm text-gray-600">${asesor.nombre}</span>
+                                </div>
+                            `;
+                        });
+                    }
+                    childrenHtml += `</div>`;
+
+                    supBlock.innerHTML = headerHtml + childrenHtml;
+                    treeContainer.appendChild(supBlock);
+                });
+            }
+            
+            updateSelectionCount();
+            modal.classList.remove('hidden');
+        }
+
+        // --- Helpers del Árbol ---
+
+        function toggleNode(supId) {
+            const node = document.getElementById(`node-${supId}`);
+            const icon = document.getElementById(`icon-${supId}`);
+            node.classList.toggle('hidden');
+            icon.classList.toggle('rotate-90');
+        }
+
+        function toggleTree(expand) {
+            supervisorsCache.forEach(sup => {
+                const node = document.getElementById(`node-${sup.id}`);
+                const icon = document.getElementById(`icon-${sup.id}`);
+                if (expand) {
+                    node.classList.remove('hidden');
+                    icon.classList.add('rotate-90');
+                } else {
+                    node.classList.add('hidden');
+                    icon.classList.remove('rotate-90');
+                }
+            });
+        }
+
+        // Marcar/Desmarcar todos los asesores de un supervisor
+        function toggleSupervisor(supId) {
+            const parentCheck = document.getElementById(`check-${supId}`);
+            const childChecks = document.querySelectorAll(`input[data-supervisor="${supId}"]`);
+            
+            childChecks.forEach(cb => cb.checked = parentCheck.checked);
+            updateSelectionCount();
+        }
+
+        // Actualizar estado del checkbox padre según los hijos
+        function updateParentState(supId) {
+            const parentCheck = document.getElementById(`check-${supId}`);
+            const childChecks = Array.from(document.querySelectorAll(`input[data-supervisor="${supId}"]`));
+            
+            if (childChecks.length === 0) return;
+
+            const allChecked = childChecks.every(cb => cb.checked);
+            const someChecked = childChecks.some(cb => cb.checked);
+
+            parentCheck.checked = allChecked;
+            parentCheck.indeterminate = someChecked && !allChecked;
+            
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            const count = document.querySelectorAll('.asesor-check:checked').length;
+            document.getElementById('selectionCount').textContent = count;
+        }
+
+        // --- Motor de Exportación ---
+
+        async function generateCSVForSupervisor(supervisorId, asesorIds, filterMonth, filterYear) {
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
+            if (!templateDoc.exists()) return null;
+            
+            const template = normalizeCategories(templateDoc.data().categorias || []);
+            const supervisorName = usersCache[supervisorId]?.nombre || supervisorId;
+
+            // 1. Headers Dinámicos
+            let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales"];
+            template.forEach(cat => {
+                cat.grupos.forEach(grupo => {
+                    grupo.criterios.forEach(crit => {
+                        const cleanCrit = crit.replace(/"/g, '""');
+                        headers.push(`"${cat.nombre} - ${grupo.nombre} - ${cleanCrit}"`);
+                    });
+                });
+                headers.push(`"${cat.nombre}_Comentarios"`);
+            });
+
+            // 2. Query
+            let q = query(collection(db, "evaluations"), where("supervisorId", "==", supervisorId));
+            if (filterYear && filterYear !== 'all') {
+                q = query(q, where("year", "==", filterYear));
+            }
+            
+            const querySnapshot = await getDocs(q);
+            let csvContent = headers.join(',') + '\n';
+            let rowCount = 0;
+
+            querySnapshot.forEach(doc => {
+                const e = doc.data();
+                
+                // Filtros: Mes y Lista Específica de Asesores
+                if (filterMonth && filterMonth !== 'all' && e.month !== filterMonth) return;
+                if (!asesorIds.includes(e.asesorId)) return; // <-- CLAVE: Solo exporta los seleccionados
+
+                const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
+                
+                let row = [
+                    doc.id, e.asesorId, `"${asesorNombre}"`, e.month, e.year,
+                    e.calificacionGeneral || '', e.metaLlamadas || '',
+                    `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`
+                ];
+
+                template.forEach(cat => {
+                    const catData = e.categoriasEvaluadas ? e.categoriasEvaluadas[cat.nombre] || {} : {};
+                    cat.grupos.forEach(grupo => {
+                        grupo.criterios.forEach(crit => {
+                            const score = catData.criterios ? catData.criterios[crit] || '' : '';
+                            row.push(score);
+                        });
+                    });
+                    const comments = `Calidad: ${catData.comentarioCalidad || ''} | Superv: ${catData.comentarioSupervision || ''}`;
+                    row.push(`"${comments.replace(/"/g, '""')}"`);
+                });
+                
+                csvContent += row.join(',') + '\n';
+                rowCount++;
+            });
+
+            if (rowCount === 0) return null;
+
+            return {
+                fileName: `Evaluaciones_${supervisorName.replace(/\s+/g, '_')}_${filterYear === 'all' ? 'Completo' : filterYear}.csv`,
+                content: csvContent
+            };
+        }
+
+        // Manejo del Submit
+        document.getElementById('massExportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Recolectar qué asesores se eligieron por cada supervisor
+            const selectionMap = {}; // { 'supId': ['asesor1', 'asesor2'] }
+            
+            document.querySelectorAll('.asesor-check:checked').forEach(cb => {
+                const supId = cb.dataset.supervisor;
+                if (!selectionMap[supId]) selectionMap[supId] = [];
+                selectionMap[supId].push(cb.value);
+            });
+
+            const supervisorsToProcess = Object.keys(selectionMap);
+            
+            if (supervisorsToProcess.length === 0) {
+                alert("Por favor selecciona al menos un asesor.");
+                return;
+            }
+
+            const btn = e.submitter;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<div class="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div> Procesando...`;
+            btn.disabled = true;
+
+            const month = document.getElementById('massExportMonth').value;
+            const year = document.getElementById('massExportYear').value;
+            let filesGenerated = 0;
+
+            try {
+                for (const supId of supervisorsToProcess) {
+                    const targetAsesores = selectionMap[supId];
+                    const result = await generateCSVForSupervisor(supId, targetAsesores, month, year);
+                    
+                    if (result) {
+                        downloadCSV(result.content, result.fileName);
+                        filesGenerated++;
+                        await new Promise(r => setTimeout(r, 800)); // Pausa para no saturar descargas
+                    }
+                }
+
+                if (filesGenerated === 0) {
+                    alert("No se encontraron evaluaciones con los filtros seleccionados.");
+                } else {
+                    document.getElementById('massExportModal').classList.add('hidden');
+                }
+
+            } catch (error) {
+                console.error("Error exportación masiva:", error);
+                alert("Ocurrió un error. Revisa la consola.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
         // ======================= EXPOSICIÓN DE FUNCIONES GLOBALES =======================
         window.logout = logout;
         window.openUserModal = openUserModal;
@@ -3057,6 +3367,11 @@
         window.openGrantBadgeModal = openGrantBadgeModal;
         window.closeGrantBadgeModal = closeGrantBadgeModal;
         window.exportBadgesToCSV = exportBadgesToCSV;
+        window.openMassExportModal = openMassExportModal;
+        window.toggleNode = toggleNode;
+        window.toggleTree = toggleTree;
+        window.toggleSupervisor = toggleSupervisor;
+        window.updateParentState = updateParentState;
         
         // Sincronización Manual
         window.forceSyncToFirebase = async () => {
@@ -3092,8 +3407,6 @@
             await loadSuperAdminView();
             alert('Datos recargados desde Firebase.');
         };
-
-
     </script>
 </body>
 </html>
