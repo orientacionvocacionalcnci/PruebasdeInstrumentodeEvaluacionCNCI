@@ -766,6 +766,11 @@
                     </div>
                     <div class="flex space-x-3">
                         <button type="button" onclick="document.getElementById('massExportModal').classList.add('hidden')" class="bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-50">Cancelar</button>
+                        
+                        <button type="button" onclick="viewSingleEvaluationFromExport()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            Ver Evaluación
+                        </button>
                         <button type="submit" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg shadow-md flex items-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                             Generar Archivos
@@ -775,7 +780,26 @@
             </form>
         </div>
     </div>
-
+    <div id="readOnlyEvaluationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+                     <div>
+                         <h3 class="text-xl font-bold text-gray-800" id="readOnlyModalTitle">Detalle de Evaluación</h3>
+                         <p class="text-sm text-gray-500" id="readOnlyModalSubtitle">Visualizando resultados</p>
+                     </div>
+                     <button onclick="document.getElementById('readOnlyEvaluationModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                </div>
+                
+                <div id="readOnlyContent" class="p-6 overflow-y-auto flex-grow bg-slate-50 space-y-6">
+                    <div class="flex justify-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>
+                </div>
+    
+                <div class="p-4 border-t bg-white flex justify-end">
+                    <button onclick="document.getElementById('readOnlyEvaluationModal').classList.add('hidden')" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    
     <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
     <script type="module" defer>
         // Importar funciones de Firebase 9+ (versión modular)
@@ -3149,6 +3173,135 @@
             modal.classList.remove('hidden');
         }
 
+        // ======================= LÓGICA DE VISUALIZACIÓN DE EVALUACIÓN INDIVIDUAL =======================
+
+        async function viewSingleEvaluationFromExport() {
+            // 1. Validar selección única
+            const selectedChecks = document.querySelectorAll('.asesor-check:checked');
+            
+            if (selectedChecks.length !== 1) {
+                alert("Para ver una evaluación, por favor selecciona exactamente UN asesor.");
+                return;
+            }
+
+            const asesorId = selectedChecks[0].value;
+            const supervisorId = selectedChecks[0].dataset.supervisor;
+            const month = document.getElementById('massExportMonth').value;
+            const year = document.getElementById('massExportYear').value;
+
+            if (month === 'all' || year === 'all') {
+                alert("Para ver una evaluación, debes seleccionar un Mes y Año específicos (no 'Todos').");
+                return;
+            }
+
+            // 2. Preparar Modal
+            const modal = document.getElementById('readOnlyEvaluationModal');
+            const content = document.getElementById('readOnlyContent');
+            const title = document.getElementById('readOnlyModalTitle');
+            const subtitle = document.getElementById('readOnlyModalSubtitle');
+            
+            modal.classList.remove('hidden');
+            content.innerHTML = '<div class="flex justify-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>';
+            
+            const asesorName = usersCache[asesorId]?.nombre || asesorId;
+            title.textContent = `Evaluación: ${asesorName}`;
+            subtitle.textContent = `Periodo: ${month} ${year}`;
+
+            try {
+                // 3. Obtener Datos
+                const evalId = `${asesorId}_${year}_${month}`;
+                const evalDoc = await getDoc(doc(db, "evaluations", evalId));
+
+                if (!evalDoc.exists()) {
+                    content.innerHTML = `
+                        <div class="text-center p-8 text-gray-500">
+                            <p class="text-xl mb-2">🤷‍♂️</p>
+                            <p class="font-bold">No se encontró evaluación</p>
+                            <p class="text-sm">El asesor no tiene evaluación registrada para este periodo.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const data = evalDoc.data();
+                
+                // 4. Obtener Plantilla del Supervisor (para estructura correcta)
+                const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
+                const template = normalizeCategories(templateDoc.exists() ? templateDoc.data().categorias || [] : []);
+
+                // 5. Renderizar Contenido (Reutilizando lógica visual del dashboard)
+                let html = '';
+
+                // --- Métricas ---
+                const m = data.metricas || { llamadas: 0, llamadasPct: 0, alumnos: 0, alumnosPct: 0 };
+                html += `
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white p-3 rounded border text-center"><div class="text-xl font-bold text-slate-700">${m.llamadas}</div><div class="text-xs text-slate-500">Llamadas</div></div>
+                        <div class="bg-white p-3 rounded border-b-4 border-blue-500 text-center"><div class="text-xl font-bold text-blue-600">${m.llamadasPct}%</div><div class="text-xs text-slate-500">Cumplimiento</div></div>
+                        <div class="bg-white p-3 rounded border text-center"><div class="text-xl font-bold text-slate-700">${m.alumnos}</div><div class="text-xs text-slate-500">Alumnos</div></div>
+                        <div class="bg-white p-3 rounded border-b-4 border-orange-500 text-center"><div class="text-xl font-bold text-orange-600">${m.alumnosPct}%</div><div class="text-xs text-slate-500">Cumplimiento</div></div>
+                    </div>
+                `;
+
+                // --- Calificación General ---
+                html += `
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex justify-between items-center">
+                        <span class="text-lg font-bold text-gray-700">Calificación Final</span>
+                        <span class="text-3xl font-extrabold text-blue-600">${data.calificacionGeneral || '0.00'}</span>
+                    </div>
+                `;
+
+                // --- Categorías y Grupos ---
+                template.forEach(cat => {
+                    const catData = data.categoriasEvaluadas && data.categoriasEvaluadas[cat.nombre] ? data.categoriasEvaluadas[cat.nombre] : {};
+                    const score = parseFloat(catData.puntaje || 0).toFixed(2);
+                    
+                    let groupsHtml = '';
+                    cat.grupos.forEach(grupo => {
+                        let criteriaList = '';
+                        grupo.criterios.forEach(crit => {
+                            const val = catData.criterios ? catData.criterios[crit] : '-';
+                            criteriaList += `<li class="flex justify-between text-sm py-1 border-b border-gray-100 last:border-0"><span class="text-gray-600">${crit}</span><span class="font-bold">${val}</span></li>`;
+                        });
+                        
+                        groupsHtml += `
+                            <div class="mt-3 bg-slate-50 p-2 rounded border border-slate-200">
+                                <div class="text-xs font-bold text-slate-600 uppercase mb-1">${grupo.nombre}</div>
+                                <ul>${criteriaList}</ul>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                        <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-400 mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-bold text-gray-800">${cat.nombre}</h4>
+                                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">${score}</span>
+                            </div>
+                            <div class="text-sm text-gray-500 italic mb-2">
+                                <p>📝 ${catData.comentarioCalidad || 'Sin comentarios'}</p>
+                            </div>
+                            ${groupsHtml}
+                        </div>
+                    `;
+                });
+
+                // --- Feedback General ---
+                html += `
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6">
+                        <h5 class="font-bold text-yellow-800 text-sm mb-1">Feedback General</h5>
+                        <p class="text-sm text-yellow-900">${data.comentariosGenerales || 'Sin comentarios.'}</p>
+                    </div>
+                `;
+
+                content.innerHTML = html;
+
+            } catch (error) {
+                console.error("Error visualizando evaluación:", error);
+                content.innerHTML = `<div class="text-center p-4 text-red-500">Error al cargar datos.</div>`;
+            }
+        }
+
         // --- Helpers del Árbol ---
 
         function toggleNode(supId) {
@@ -3372,6 +3525,7 @@
         window.toggleTree = toggleTree;
         window.toggleSupervisor = toggleSupervisor;
         window.updateParentState = updateParentState;
+        window.viewSingleEvaluationFromExport = viewSingleEvaluationFromExport;
         
         // Sincronización Manual
         window.forceSyncToFirebase = async () => {
