@@ -1642,20 +1642,59 @@
             
             currentEvaluationBadges = existingData.insigniasOtorgadas || [];
             
-            // 3. Renderizar Formulario General (Inputs fijos)
+// 3. Renderizar Formulario General (Inputs fijos)
             container.innerHTML = '';
             
+            // Helper para leer métricas si ya existen (o usar vacío si es nuevo)
+            const m = existingData.metricas || {}; 
+
             container.innerHTML += `
                 <div class="p-4 border rounded-lg bg-gray-50 mb-6 shadow-sm">
-                    <h4 class="font-bold mb-2 text-gray-700 border-b pb-2">Resumen General y Metas</h4>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                        <div>
-                           <label class="block text-sm font-medium text-gray-600">Calificación General (Cálculo Automático)</label>
-                           <input type="number" id="evalGeneralScore" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-200 text-blue-800 font-bold" readonly>
+                    <h4 class="font-bold mb-4 text-gray-700 border-b pb-2">Métricas de Productividad (Ingreso Manual)</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        
+                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <h5 class="text-xs font-bold text-blue-800 uppercase mb-2">📞 Gestión Telefónica</h5>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Llamadas Realizadas</label>
+                                    <input type="number" id="metricaLlamadas" min="0" max="9999" placeholder="0" 
+                                        value="${m.llamadas || ''}" 
+                                        class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Cumplimiento (%)</label>
+                                    <input type="number" id="metricaLlamadasPct" min="0" max="999" placeholder="%" 
+                                        value="${m.llamadasPct || ''}" 
+                                        class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-blue-600 font-bold">
+                                </div>
+                            </div>
                         </div>
-                         <div>
-                           <label class="block text-sm font-medium text-gray-600">Meta de Llamadas (%)</label>
-                           <input type="number" id="evalCallsTarget" min="0" max="100" value="${existingData.metaLlamadas || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+
+                        <div class="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                            <h5 class="text-xs font-bold text-orange-800 uppercase mb-2">🎓 Gestión de Alumnos</h5>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Alumnos Contactados</label>
+                                    <input type="number" id="metricaAlumnos" min="0" max="9999" placeholder="0" 
+                                        value="${m.alumnos || ''}" 
+                                        class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 font-bold text-gray-700">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Cumplimiento (%)</label>
+                                    <input type="number" id="metricaAlumnosPct" min="0" max="999" placeholder="%" 
+                                        value="${m.alumnosPct || ''}" 
+                                        class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 text-orange-600 font-bold">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                           <label class="block text-sm font-medium text-gray-600">Calificación General (Automática)</label>
+                           <input type="number" id="evalGeneralScore" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-200 text-blue-800 font-bold" readonly>
                         </div>
                          <div>
                            <label class="block text-sm font-medium text-gray-600">Enlace "Detalles de Evaluación"</label>
@@ -1746,17 +1785,27 @@
             document.getElementById('evaluationModal').classList.add('hidden');
         }
         
-        async function saveEvaluation() {
+async function saveEvaluation() {
             const asesorId = document.getElementById('evaluationAsesorId').value;
             const month = document.getElementById('evaluationMonth').value;
             const year = document.getElementById('evaluationYear').value;
             const evalId = `${asesorId}_${year}_${month}`;
             
-            // Objeto base
+            // --- NUEVO: Captura de las 4 métricas manuales ---
+            const metricasData = {
+                llamadas: document.getElementById('metricaLlamadas').value || 0,
+                llamadasPct: document.getElementById('metricaLlamadasPct').value || 0,
+                alumnos: document.getElementById('metricaAlumnos').value || 0,
+                alumnosPct: document.getElementById('metricaAlumnosPct').value || 0
+            };
+
+            // Objeto base actualizado
             const evaluationData = {
                 asesorId, month, year, supervisorId: currentUser.id,
-                calificacionGeneral: document.getElementById('evalGeneralScore').value, // Ya viene calculado por calculateWeightedScore
-                metaLlamadas: document.getElementById('evalCallsTarget').value,
+                calificacionGeneral: document.getElementById('evalGeneralScore').value, 
+                // AQUÍ ESTÁ EL CAMBIO: Usamos el objeto 'metricas' en lugar de 'metaLlamadas'
+                metricas: metricasData,
+                
                 enlaceDetalles: document.getElementById('evalDetailsLink').value,
                 enlacePlanTrabajo: document.getElementById('evalWorkPlanLink').value,
                 comentariosGenerales: document.getElementById('evalGeneralComments').value,
@@ -1765,6 +1814,9 @@
                 insigniasOtorgadas: currentEvaluationBadges 
             };
 
+            // ... (El resto de la función, a partir de 'const templateDoc = ...', se queda IGUAL)
+            // Solo asegúrate de que el código de abajo siga ahí para procesar las categorías.
+            
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
             if (!templateDoc.exists()) {
                 alert("Error: No se encontró la plantilla de evaluación.");
@@ -1896,8 +1948,7 @@
                  </div>`;
         }
 
-
-        async function renderAsesorDashboard() {
+async function renderAsesorDashboard() {
             const month = document.getElementById('monthSelector').value;
             const year = document.getElementById('yearSelector').value;
             const evalId = `${currentUser.id}_${year}_${month}`;
@@ -1917,115 +1968,42 @@
                 const supervisorId = data.supervisorId;
                 
                 // 1. OBTENER Y NORMALIZAR PLANTILLA
-                // Esto es vital para saber qué criterios pertenecen a qué grupo
                 const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
                 const template = normalizeCategories(templateDoc.exists() ? templateDoc.data().categorias || [] : []);
                 
                 let categoriesHTML = '';
 
-                // 2. Iterar sobre la estructura de la plantilla (Categoría > Grupo > Criterio)
+                // 2. Iterar sobre la estructura de la plantilla
                 if (template.length > 0) {
                     template.forEach(cat => {
                         const catName = cat.nombre;
-                        // Datos guardados de la evaluación para esta categoría
                         const catData = data.categoriasEvaluadas && data.categoriasEvaluadas[catName] ? data.categoriasEvaluadas[catName] : {};
-                        
-                        // Puntaje total de la categoría (ya viene calculado con la ponderación nueva desde saveEvaluation)
                         const score = parseFloat(catData.puntaje || 0);
                         const ponderacion = cat.ponderacion || 0;
-
-                        // Estilos de semáforo
                         const scoreClass = score >= 9 ? 'score-high' : score >= 7 ? 'score-medium' : 'score-low';
                         const borderClass = score >= 9 ? 'border-green-500' : score >= 7 ? 'border-amber-500' : 'border-red-500';
 
-                        // 3. Construir HTML de los Grupos
                         let groupsHtml = '';
-                        
                         if (cat.grupos && cat.grupos.length > 0) {
                             cat.grupos.forEach(grupo => {
-                                // Calculamos el promedio del grupo "al vuelo" para mostrarlo al asesor
-                                let gSum = 0;
-                                let gCount = 0;
-                                let criteriaListHtml = '';
-
+                                let gSum = 0; let gCount = 0; let criteriaListHtml = '';
                                 grupo.criterios.forEach(crit => {
-                                    // Verificamos si existe calificación para este criterio
                                     const critScore = catData.criterios ? catData.criterios[crit] : undefined;
-                                    
                                     if (critScore !== undefined) {
-                                        gSum += parseFloat(critScore);
-                                        gCount++;
-                                        criteriaListHtml += `
-                                            <li class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 text-sm">
-                                                <span class="text-gray-600">${crit}</span>
-                                                <span class="font-bold text-gray-800">${critScore}</span>
-                                            </li>
-                                        `;
+                                        gSum += parseFloat(critScore); gCount++;
+                                        criteriaListHtml += `<li class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 text-sm"><span class="text-gray-600">${crit}</span><span class="font-bold text-gray-800">${critScore}</span></li>`;
                                     } else {
-                                         // Criterio en plantilla pero no evaluado (o dato antiguo)
-                                         criteriaListHtml += `
-                                            <li class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 text-sm opacity-50">
-                                                <span class="text-gray-500">${crit}</span>
-                                                <span class="text-xs text-gray-400">N/A</span>
-                                            </li>
-                                        `;
+                                         criteriaListHtml += `<li class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 text-sm opacity-50"><span class="text-gray-500">${crit}</span><span class="text-xs text-gray-400">N/A</span></li>`;
                                     }
                                 });
-
                                 const groupAvg = gCount > 0 ? (gSum / gCount).toFixed(2) : '0.00';
-
-                                groupsHtml += `
-                                    <div class="mb-3 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-                                        <div class="px-3 py-2 bg-slate-100 flex justify-between items-center border-b border-slate-200">
-                                            <div>
-                                                <span class="font-bold text-gray-700 text-xs uppercase tracking-wide">${grupo.nombre}</span>
-                                                <span class="text-xs text-gray-500 ml-1">(${grupo.ponderacion}%)</span>
-                                            </div>
-                                            <span class="font-bold text-blue-600 text-sm bg-white px-2 py-0.5 rounded shadow-sm">${groupAvg}</span>
-                                        </div>
-                                        <ul class="px-3 py-2 bg-white">
-                                            ${criteriaListHtml || '<li class="text-xs text-gray-400 italic">Sin datos</li>'}
-                                        </ul>
-                                    </div>
-                                `;
+                                groupsHtml += `<div class="mb-3 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden"><div class="px-3 py-2 bg-slate-100 flex justify-between items-center border-b border-slate-200"><div><span class="font-bold text-gray-700 text-xs uppercase tracking-wide">${grupo.nombre}</span><span class="text-xs text-gray-500 ml-1">(${grupo.ponderacion}%)</span></div><span class="font-bold text-blue-600 text-sm bg-white px-2 py-0.5 rounded shadow-sm">${groupAvg}</span></div><ul class="px-3 py-2 bg-white">${criteriaListHtml || '<li class="text-xs text-gray-400 italic">Sin datos</li>'}</ul></div>`;
                             });
                         } else {
                             groupsHtml = '<p class="text-sm text-gray-500 italic">Sin estructura de grupos definida.</p>';
                         }
 
-                        // 4. Armar la Tarjeta de la Categoría
-                        categoriesHTML += `
-                            <div class="bg-white rounded-xl shadow-md p-5 border-l-4 ${borderClass} transition-all duration-300 hover:shadow-lg mb-4">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h4 class="font-bold text-lg text-gray-800">${catName}</h4>
-                                        <span class="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Ponderación Global: ${ponderacion}%</span>
-                                    </div>
-                                    <div class="score-circle ${scoreClass} shadow-md transform scale-110">${score.toFixed(2)}</div>
-                                </div>
-                                
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm bg-gray-50 p-3 rounded-lg">
-                                    <div>
-                                        <strong class="text-gray-700 block mb-1">📝 Comentarios Calidad:</strong>
-                                        <p class="text-gray-600 italic">${catData.comentarioCalidad || 'Sin comentarios.'}</p>
-                                    </div>
-                                    <div>
-                                        <strong class="text-gray-700 block mb-1">📋 Comentarios Supervisión:</strong>
-                                        <p class="text-gray-600 italic">${catData.comentarioSupervision || 'Sin comentarios.'}</p>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <button onclick="toggleCriteria(this)" class="flex items-center text-sm text-blue-600 font-bold hover:text-blue-800 transition-colors w-full text-left focus:outline-none">
-                                        <span class="mr-1">Ver Desglose por Grupos</span>
-                                        <svg class="w-4 h-4 criteria-toggle transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                    </button>
-                                    <div class="criteria-content mt-2">
-                                        ${groupsHtml}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+                        categoriesHTML += `<div class="bg-white rounded-xl shadow-md p-5 border-l-4 ${borderClass} transition-all duration-300 hover:shadow-lg mb-4"><div class="flex justify-between items-start mb-4"><div><h4 class="font-bold text-lg text-gray-800">${catName}</h4><span class="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Ponderación Global: ${ponderacion}%</span></div><div class="score-circle ${scoreClass} shadow-md transform scale-110">${score.toFixed(2)}</div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm bg-gray-50 p-3 rounded-lg"><div><strong class="text-gray-700 block mb-1">📝 Comentarios Calidad:</strong><p class="text-gray-600 italic">${catData.comentarioCalidad || 'Sin comentarios.'}</p></div><div><strong class="text-gray-700 block mb-1">📋 Comentarios Supervisión:</strong><p class="text-gray-600 italic">${catData.comentarioSupervision || 'Sin comentarios.'}</p></div></div><div><button onclick="toggleCriteria(this)" class="flex items-center text-sm text-blue-600 font-bold hover:text-blue-800 transition-colors w-full text-left focus:outline-none"><span class="mr-1">Ver Desglose por Grupos</span><svg class="w-4 h-4 criteria-toggle transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button><div class="criteria-content mt-2">${groupsHtml}</div></div></div>`;
                     });
                 } else {
                     categoriesHTML = `<div class="p-4 bg-yellow-50 text-yellow-700 rounded-lg">No se encontró la estructura de evaluación del supervisor.</div>`;
@@ -2033,31 +2011,43 @@
 
                 // Datos Generales
                 const calificacionGeneral = parseFloat(data.calificacionGeneral || 0);
-                const metaLlamadas = parseInt(data.metaLlamadas || 0);
+                
+                // NUEVO: Obtener Métricas
+                const m = data.metricas || { llamadas: 0, llamadasPct: 0, alumnos: 0, alumnosPct: 0 };
 
-                // Renderizado Final del Tab Resumen
+                // Renderizado Final del Tab Resumen (DISEÑO NUEVO)
                 resumenContainer.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-600 relative overflow-hidden">
-                             <div class="absolute top-0 right-0 p-2 opacity-10">
-                                <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                             </div>
-                             <h3 class="font-bold text-gray-500 text-sm uppercase tracking-wider mb-1">Calificación General</h3>
-                             <p class="text-6xl font-extrabold text-blue-600 my-2 tracking-tight">${calificacionGeneral.toFixed(2)}</p>
-                             <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
-                                 <div class="progress-bar h-3 rounded-full shadow-inner" style="width: ${calificacionGeneral * 10}%"></div>
-                             </div>
-                        </div>
+                    <div class="mb-6 bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-600 relative overflow-hidden">
+                         <div class="absolute top-0 right-0 p-2 opacity-10">
+                            <svg class="w-32 h-32" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                         </div>
+                         <h3 class="font-bold text-gray-500 text-sm uppercase tracking-wider mb-1">Calificación General</h3>
+                         <p class="text-7xl font-extrabold text-blue-600 my-2 tracking-tight">${calificacionGeneral.toFixed(2)}</p>
+                         <div class="w-full max-w-md bg-gray-200 rounded-full h-3 mt-2">
+                             <div class="progress-bar h-3 rounded-full shadow-inner" style="width: ${calificacionGeneral * 10}%"></div>
+                         </div>
+                    </div>
 
-                        <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center text-center border-t-4 border-orange-500 relative overflow-hidden">
-                             <div class="absolute top-0 right-0 p-2 opacity-10">
-                                <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 00-1-1H3zm6 9a1 1 0 100-2 1 1 0 000 2zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
-                             </div>
-                             <h3 class="font-bold text-gray-500 text-sm uppercase tracking-wider mb-1">Meta de Llamadas</h3>
-                             <p class="text-6xl font-extrabold text-orange-500 my-2 tracking-tight">${metaLlamadas}%</p>
-                             <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
-                                 <div class="progress-bar-orange h-3 rounded-full shadow-inner" style="width: ${metaLlamadas}%"></div>
-                             </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center hover:shadow-md transition-shadow">
+                            <span class="text-2xl mb-1">📞</span>
+                            <span class="text-2xl font-bold text-slate-700">${m.llamadas}</span>
+                            <span class="text-xs text-slate-500 uppercase tracking-wide text-center">Llamadas Realizadas</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-blue-500 flex flex-col items-center justify-center relative overflow-hidden hover:shadow-md transition-shadow">
+                            <span class="text-2xl font-bold text-blue-600 z-10">${m.llamadasPct}%</span>
+                            <span class="text-xs text-slate-500 uppercase tracking-wide z-10 text-center">Cumplimiento Llamadas</span>
+                            <div class="absolute bottom-0 left-0 h-1.5 bg-blue-100 w-full"><div class="h-full bg-blue-500" style="width: ${Math.min(m.llamadasPct, 100)}%"></div></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center hover:shadow-md transition-shadow">
+                            <span class="text-2xl mb-1">🎓</span>
+                            <span class="text-2xl font-bold text-slate-700">${m.alumnos}</span>
+                            <span class="text-xs text-slate-500 uppercase tracking-wide text-center">Alumnos Contactados</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-orange-500 flex flex-col items-center justify-center relative overflow-hidden hover:shadow-md transition-shadow">
+                            <span class="text-2xl font-bold text-orange-600 z-10">${m.alumnosPct}%</span>
+                            <span class="text-xs text-slate-500 uppercase tracking-wide z-10 text-center">Cumplimiento Alumnos</span>
+                            <div class="absolute bottom-0 left-0 h-1.5 bg-orange-100 w-full"><div class="h-full bg-orange-500" style="width: ${Math.min(m.alumnosPct, 100)}%"></div></div>
                         </div>
                     </div>
 
@@ -2078,9 +2068,6 @@
                         </a>
                     </div>
                 `;
-
-                // Re-inicializar la funcionalidad de colapso/expansión manual si fuera necesaria
-                // Nota: La función toggleCriteria ya existe globalmente en el index.html original.
 
             } catch (error) {
                  console.error("Error renderizando dashboard de asesor:", error);
