@@ -344,6 +344,120 @@
                         </div>
                     </div>
                 </div>
+                <div class="mt-8 border-t border-gray-200 pt-8 pb-12 w-full">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-8 gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                                <span class="text-3xl mr-2">📊</span> Centro de Resultados
+                            </h2>
+                            <p class="text-sm text-gray-500 mt-1">Análisis de tendencias, distribución y descarga de reportes detallados.</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-100 items-end w-full xl:w-auto">
+                            <div>
+                                <label class="text-xs font-bold text-gray-400 uppercase ml-1 block mb-1">Año</label>
+                                <select id="anlYear" class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2.5 w-full xl:w-24 focus:ring-blue-500 outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-400 uppercase ml-1 block mb-1">Mes</label>
+                                <select id="anlMonth" class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2.5 w-full xl:w-32 focus:ring-blue-500 outline-none">
+                                    <option value="all">Todos</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-400 uppercase ml-1 block mb-1">Supervisor</label>
+                                <select id="anlSup" class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2.5 w-full xl:w-48 focus:ring-blue-500 outline-none">
+                                    <option value="all">Todos</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 w-full xl:w-auto">
+                                <button onclick="updateAnalytics()" class="flex-1 xl:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow transition-all h-[42px] flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    Analizar
+                                </button>
+                                <button onclick="downloadWideCSV()" class="flex-1 xl:flex-none bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow transition-all h-[42px] flex items-center justify-center" title="Descargar CSV con desglose de categorías">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-xl shadow lg:col-span-2">
+                            <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+                                <span class="bg-blue-100 text-blue-600 p-1 rounded mr-2 text-xs">A</span>
+                                Tendencia Mensual (Promedio Global)
+                            </h3>
+                            <div class="relative h-64">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow lg:col-span-1">
+                            <h3 class="font-bold text-gray-700 mb-4 flex items-center">
+                                <span class="bg-blue-100 text-blue-600 p-1 rounded mr-2 text-xs">B</span>
+                                Estatus de Calificaciones
+                            </h3>
+                            <div class="relative h-64 flex justify-center">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <div class="bg-white rounded-xl shadow overflow-hidden">
+                        <div class="flex border-b bg-gray-50 overflow-x-auto">
+                            <button onclick="switchAnaTab('t1')" id="btn-t1" class="ana-tab whitespace-nowrap px-6 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 bg-white focus:outline-none transition-colors">
+                                1. Detalle General (CSV)
+                            </button>
+                            <button onclick="switchAnaTab('t2')" id="btn-t2" class="ana-tab whitespace-nowrap px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 focus:outline-none transition-colors">
+                                2. Matriz Anual
+                            </button>
+                            <button onclick="switchAnaTab('t3')" id="btn-t3" class="ana-tab whitespace-nowrap px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 focus:outline-none transition-colors">
+                                3. Comparativa Supervisores
+                            </button>
+                        </div>
+                
+                        <div id="view-t1" class="p-0 overflow-x-auto max-h-[500px]">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-100 text-gray-600 sticky top-0 z-10 shadow-sm" id="t1-head">
+                                    </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="t1-body"></tbody>
+                            </table>
+                        </div>
+                
+                        <div id="view-t2" class="p-0 overflow-x-auto hidden max-h-[500px]">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-100 text-gray-600 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-bold uppercase sticky left-0 bg-gray-100 border-r z-20">Asesor</th>
+                                        <th class="px-2 text-center text-xs">Ene</th><th class="px-2 text-center text-xs">Feb</th>
+                                        <th class="px-2 text-center text-xs">Mar</th><th class="px-2 text-center text-xs">Abr</th>
+                                        <th class="px-2 text-center text-xs">May</th><th class="px-2 text-center text-xs">Jun</th>
+                                        <th class="px-2 text-center text-xs">Jul</th><th class="px-2 text-center text-xs">Ago</th>
+                                        <th class="px-2 text-center text-xs">Sep</th><th class="px-2 text-center text-xs">Oct</th>
+                                        <th class="px-2 text-center text-xs">Nov</th><th class="px-2 text-center text-xs">Dic</th>
+                                        <th class="px-4 text-center font-bold bg-gray-200 border-l">PROM</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="t2-body"></tbody>
+                            </table>
+                        </div>
+                
+                        <div id="view-t3" class="p-0 overflow-x-auto hidden max-h-[500px]">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-100 text-gray-600 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-bold uppercase cursor-pointer" onclick="sortSimpleTable('t3-body', 0)">Supervisor ↕</th>
+                                        <th class="px-6 py-3 text-center font-bold uppercase">Asesores Evaluados</th>
+                                        <th class="px-6 py-3 text-center font-bold uppercase cursor-pointer" onclick="sortSimpleTable('t3-body', 2)">Promedio Equipo ↕</th>
+                                        <th class="px-6 py-3 text-center font-bold uppercase">Estatus</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="t3-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </main>
         </div>
         
@@ -996,6 +1110,7 @@
                 userTableState.currentPage = 1; 
                 renderUsersTable();
             });
+            initAnalytics();
         }
 
         function renderUsersTable() {
@@ -3467,6 +3582,318 @@ async function renderAsesorDashboard() {
                 btn.disabled = false;
             }
         });
+
+     // ================= LÓGICA DE CENTRO DE RESULTADOS (CORREGIDO) =================
+    
+        let chartTrend = null;
+        let chartStatus = null;
+        let currentAnalyticsData = []; 
+        let allDynamicCategories = new Set(); 
+    
+        // --- FUNCIÓN MOVIDA AFUERA PARA QUE SEA VISIBLE ---
+        function switchAnaTab(tabId) {
+            ['t1', 't2', 't3'].forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`btn-${t}`);
+                if(view) view.classList.add('hidden');
+                if(btn) {
+                    btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600', 'bg-white');
+                    btn.classList.add('text-gray-500');
+                }
+            });
+            const activeView = document.getElementById(`view-${tabId}`);
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if(activeView) activeView.classList.remove('hidden');
+            if(activeBtn) {
+                activeBtn.classList.remove('text-gray-500');
+                activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600', 'bg-white');
+            }
+        }
+    
+        // 1. Inicialización
+        function initAnalytics() {
+            const ySel = document.getElementById('anlYear');
+            const mSel = document.getElementById('anlMonth');
+            const sSel = document.getElementById('anlSup');
+            
+            // Validar que existan los elementos antes de usarlos
+            if(ySel) ySel.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            if(mSel) mSel.innerHTML = '<option value="all">Todos</option>' + availablePeriods.months.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+            if(sSel) {
+                sSel.innerHTML = '<option value="all">Todos</option>';
+                supervisorsCache.forEach(s => sSel.innerHTML += `<option value="${s.id}">${s.nombre}</option>`);
+            }
+    
+            // Cargar datos iniciales
+            updateAnalytics(); 
+        }
+    
+        // 2. Carga y Procesamiento
+        async function updateAnalytics() {
+            const yearElem = document.getElementById('anlYear');
+            const monthElem = document.getElementById('anlMonth');
+            const supElem = document.getElementById('anlSup');
+    
+            if(!yearElem || !monthElem || !supElem) return;
+    
+            const year = yearElem.value;
+            const month = monthElem.value;
+            const supId = supElem.value;
+            
+            const btn = document.querySelector('button[onclick="updateAnalytics()"]');
+            const oldTxt = btn ? btn.innerHTML : 'Analizar';
+            if(btn) { btn.innerHTML = '...'; btn.disabled = true; }
+    
+            try {
+                let q = query(collection(db, "evaluations"), where("year", "==", year));
+                if (month !== 'all') q = query(q, where("month", "==", month));
+                
+                const snapshot = await getDocs(q);
+                let rawEvals = [];
+                allDynamicCategories.clear();
+    
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    if (supId === 'all' || d.supervisorId === supId) {
+                        if (d.categoriasEvaluadas) {
+                            Object.keys(d.categoriasEvaluadas).forEach(catName => allDynamicCategories.add(catName));
+                        }
+                        rawEvals.push(d);
+                    }
+                });
+    
+                currentAnalyticsData = rawEvals;
+                renderCharts(rawEvals);
+                renderTable1_Detail(rawEvals);
+                renderTable2_Matrix(rawEvals);
+                renderTable3_Supervisors(rawEvals);
+    
+            } catch (e) {
+                console.error("Error en updateAnalytics:", e);
+                // No mostramos alert aquí para no bloquear si es error de permisos inicial
+            } finally {
+                if(btn) { btn.innerHTML = oldTxt; btn.disabled = false; }
+            }
+        }
+    
+        // 3. Gráficas
+        function renderCharts(data) {
+            const ctxTrend = document.getElementById('trendChart');
+            const ctxStatus = document.getElementById('statusChart');
+            
+            // Validación de seguridad por si las gráficas no existen en el DOM
+            if (!ctxTrend || !ctxStatus) return;
+    
+            const months = availablePeriods.months;
+            const monthAvgs = months.map(m => {
+                const evalsInMonth = data.filter(d => d.month === m);
+                if (evalsInMonth.length === 0) return null;
+                const sum = evalsInMonth.reduce((acc, curr) => acc + (parseFloat(curr.calificacionGeneral)||0), 0);
+                return (sum / evalsInMonth.length).toFixed(2);
+            });
+    
+            if (chartTrend) chartTrend.destroy();
+            chartTrend = new Chart(ctxTrend.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Promedio Global',
+                        data: monthAvgs,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        tension: 0.3, fill: true, spanGaps: true
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 10 } } }
+            });
+    
+            let high = 0, mid = 0, low = 0;
+            data.forEach(d => {
+                const s = parseFloat(d.calificacionGeneral)||0;
+                if(s >= 9) high++; else if(s >= 7) mid++; else low++;
+            });
+    
+            if (chartStatus) chartStatus.destroy();
+            chartStatus = new Chart(ctxStatus.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Excelente (9-10)', 'Regular (7-8)', 'Bajo (<7)'],
+                    datasets: [{
+                        data: [high, mid, low],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+    
+        // 4. Tablas
+        function renderTable1_Detail(data) {
+            const thead = document.getElementById('t1-head');
+            const tbody = document.getElementById('t1-body');
+            if(!thead || !tbody) return;
+    
+            const cats = Array.from(allDynamicCategories).sort();
+            
+            let headerHTML = `
+                <tr>
+                    <th class="px-4 py-3 text-left font-bold uppercase sticky left-0 bg-gray-100 cursor-pointer border-r z-20" onclick="sortTable1('name')">Asesor ↕</th>
+                    <th class="px-4 py-3 text-left font-bold uppercase">Usuario</th>
+                    <th class="px-4 py-3 text-center font-bold uppercase">Mes</th>
+            `;
+            cats.forEach(c => headerHTML += `<th class="px-4 py-3 text-center font-bold uppercase text-xs text-blue-800 bg-blue-50">${c}</th>`);
+            headerHTML += `<th class="px-4 py-3 text-center font-bold uppercase bg-gray-200 cursor-pointer" onclick="sortTable1('score')">Final ↕</th></tr>`;
+            
+            thead.innerHTML = headerHTML;
+            tbody.innerHTML = '';
+            
+            if(data.length === 0) { 
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">No hay datos disponibles.</td></tr>'; 
+                return; 
+            }
+    
+            data.forEach(d => {
+                const u = usersCache[d.asesorId];
+                const name = u ? u.nombre : d.asesorId;
+                let rowHTML = `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 border-b font-medium sticky left-0 bg-white border-r">${name}</td>
+                        <td class="px-4 py-2 border-b text-gray-500 text-xs">${d.asesorId}</td>
+                        <td class="px-4 py-2 border-b text-center text-xs">${d.month}</td>
+                `;
+                cats.forEach(c => {
+                    const catData = d.categoriasEvaluadas && d.categoriasEvaluadas[c];
+                    const val = catData ? catData.puntaje : '-';
+                    rowHTML += `<td class="px-4 py-2 border-b text-center text-xs text-gray-600">${val}</td>`;
+                });
+                const score = parseFloat(d.calificacionGeneral)||0;
+                const color = score>=9?'text-green-600':score>=7?'text-yellow-600':'text-red-600';
+                rowHTML += `<td class="px-4 py-2 border-b text-center font-bold ${color}">${score}</td></tr>`;
+                tbody.innerHTML += rowHTML;
+            });
+        }
+    
+        function renderTable2_Matrix(data) {
+            const tbody = document.getElementById('t2-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            const advisorMap = {};
+    
+            data.forEach(d => {
+                if (!advisorMap[d.asesorId]) {
+                    const u = usersCache[d.asesorId];
+                    advisorMap[d.asesorId] = { name: u ? u.nombre : d.asesorId, months: {}, total: 0, count: 0 };
+                }
+                const s = parseFloat(d.calificacionGeneral)||0;
+                advisorMap[d.asesorId].months[d.month] = s;
+                advisorMap[d.asesorId].total += s;
+                advisorMap[d.asesorId].count++;
+            });
+    
+            Object.values(advisorMap).sort((a,b)=>a.name.localeCompare(b.name)).forEach(ad => {
+                const avg = (ad.total/ad.count).toFixed(2);
+                let cells = '';
+                availablePeriods.months.forEach(m => {
+                    const val = ad.months[m];
+                    if (val !== undefined) {
+                        const bg = val>=9?'bg-green-100 text-green-800':val>=7?'bg-yellow-100 text-yellow-800':'bg-red-100 text-red-800';
+                        cells += `<td class="px-1 py-2 text-center text-xs font-bold ${bg} border border-white">${val.toFixed(1)}</td>`;
+                    } else {
+                        cells += `<td class="px-1 py-2 text-center text-xs text-gray-300 bg-gray-50 border border-white">-</td>`;
+                    }
+                });
+                tbody.innerHTML += `<tr><td class="px-4 py-2 border-b font-medium text-xs sticky left-0 bg-white border-r">${ad.name}</td>${cells}<td class="px-4 py-2 font-bold text-center bg-gray-50 border-l">${avg}</td></tr>`;
+            });
+        }
+    
+        function renderTable3_Supervisors(data) {
+            const tbody = document.getElementById('t3-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            const supMap = {};
+    
+            data.forEach(d => {
+                if (!supMap[d.supervisorId]) supMap[d.supervisorId] = { id: d.supervisorId, total: 0, count: 0 };
+                supMap[d.supervisorId].total += (parseFloat(d.calificacionGeneral)||0);
+                supMap[d.supervisorId].count++;
+            });
+    
+            Object.values(supMap).forEach(s => {
+                const name = usersCache[s.id] ? usersCache[s.id].nombre : s.id;
+                const avg = (s.total / s.count).toFixed(2);
+                let badge = avg>=9?'<span class="bg-green-100 text-green-800 px-2 rounded-full text-xs">Excelente</span>':avg>=7?'<span class="bg-yellow-100 text-yellow-800 px-2 rounded-full text-xs">Regular</span>':'<span class="bg-red-100 text-red-800 px-2 rounded-full text-xs">Atención</span>';
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 border-b font-medium">${name}</td>
+                        <td class="px-6 py-4 border-b text-center">${s.count}</td>
+                        <td class="px-6 py-4 border-b text-center font-bold text-lg">${avg}</td>
+                        <td class="px-6 py-4 border-b text-center">${badge}</td>
+                    </tr>`;
+            });
+        }
+    
+        // 5. CSV y Helpers
+        function downloadWideCSV() {
+            if (currentAnalyticsData.length === 0) return alert("No hay datos para exportar");
+            const cats = Array.from(allDynamicCategories).sort();
+            let csv = "Nombre Asesor,Usuario,Mes,Año,";
+            cats.forEach(c => csv += `"${c} (Promedio)",`);
+            csv += "Calificación Final\n";
+    
+            currentAnalyticsData.forEach(d => {
+                const u = usersCache[d.asesorId];
+                const name = u ? u.nombre.replace(/"/g, '""') : d.asesorId;
+                let row = `"${name}","${d.asesorId}",${d.month},${d.year},`;
+                cats.forEach(c => {
+                    const catData = d.categoriasEvaluadas && d.categoriasEvaluadas[c];
+                    row += catData ? `${catData.puntaje},` : ",";
+                });
+                row += `${d.calificacionGeneral}\n`;
+                csv += row;
+            });
+    
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Reporte_Resultados_${document.getElementById('anlYear').value}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    
+        // Helpers de Ordenamiento (GLOBALES)
+        window.sortTable1 = (key) => {
+            const data = [...currentAnalyticsData];
+            if (key === 'name') {
+                data.sort((a,b) => {
+                    const na = usersCache[a.asesorId]?.nombre || '';
+                    const nb = usersCache[b.asesorId]?.nombre || '';
+                    return na.localeCompare(nb);
+                });
+            } else if (key === 'score') {
+                data.sort((a,b) => (parseFloat(b.calificacionGeneral)||0) - (parseFloat(a.calificacionGeneral)||0));
+            }
+            renderTable1_Detail(data);
+        };
+    
+        window.sortSimpleTable = (tbodyId, colIndex) => {
+            const tbody = document.getElementById(tbodyId);
+            const rows = Array.from(tbody.rows);
+            const isAsc = tbody.dataset.order === 'asc';
+            rows.sort((a, b) => {
+                const va = a.cells[colIndex].innerText;
+                const vb = b.cells[colIndex].innerText;
+                return isAsc ? va.localeCompare(vb, undefined, {numeric: true}) : vb.localeCompare(va, undefined, {numeric: true});
+            });
+            tbody.dataset.order = isAsc ? 'desc' : 'asc';
+            rows.forEach(r => tbody.appendChild(r));
+        };
+        
         // ======================= EXPOSICIÓN DE FUNCIONES GLOBALES =======================
         window.logout = logout;
         window.openUserModal = openUserModal;
@@ -3513,6 +3940,13 @@ async function renderAsesorDashboard() {
         window.toggleSupervisor = toggleSupervisor;
         window.updateParentState = updateParentState;
         window.viewSingleEvaluationFromExport = viewSingleEvaluationFromExport;
+        
+        // Funciones del Centro de Resultados
+        window.updateAnalytics = updateAnalytics;
+        window.downloadWideCSV = downloadWideCSV;
+        window.switchAnaTab = switchAnaTab;
+        window.sortTable1 = sortTable1;
+        window.sortSimpleTable = sortSimpleTable;
         
         // Sincronización Manual
         window.forceSyncToFirebase = async () => {
