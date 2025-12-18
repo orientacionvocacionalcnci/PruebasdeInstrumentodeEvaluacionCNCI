@@ -364,12 +364,23 @@
                                     <option value="all">Todos</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="text-xs font-bold text-gray-400 uppercase ml-1 block mb-1">Supervisor</label>
-                                <select id="anlSup" class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2.5 w-full xl:w-48 focus:ring-blue-500 outline-none">
-                                    <option value="all">Todos</option>
-                                </select>
-                            </div>
+                                <div class="relative w-full xl:w-56">
+                                    <label class="text-xs font-bold text-gray-400 uppercase ml-1 block mb-1">Supervisores</label>
+        
+                                    <button onclick="toggleSupDropdown()" id="supDropdownBtn" class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2.5 w-full text-left flex justify-between items-center focus:ring-blue-500 focus:border-blue-500">
+                                        <span id="supBtnText" class="truncate">Todos seleccionados</span>
+                                        <svg class="w-4 h-4 ml-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+        
+                                    <div id="supDropdownList" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto p-2">
+                                        <div class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                            <input type="checkbox" id="sup-check-all" checked onchange="toggleAllSupervisors(this)" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <label for="sup-check-all" class="ml-2 text-sm font-bold text-gray-700 cursor-pointer w-full">Seleccionar Todos</label>
+                                        </div>
+                                        <hr class="my-1 border-gray-100">
+                                        <div id="supCheckboxesContainer" class="space-y-1"></div>
+                                    </div>
+                                </div>
                             <div class="flex gap-2 w-full xl:w-auto">
                                 <button onclick="updateAnalytics()" class="flex-1 xl:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow transition-all h-[42px] flex items-center justify-center">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -3582,15 +3593,63 @@ async function renderAsesorDashboard() {
                 btn.disabled = false;
             }
         });
-
-     // ================= LÓGICA DE CENTRO DE RESULTADOS (CORREGIDO) =================
+        // ================= LÓGICA DE CENTRO DE RESULTADOS (MULTI-SELECCIÓN) =================
     
         let chartTrend = null;
         let chartStatus = null;
         let currentAnalyticsData = []; 
         let allDynamicCategories = new Set(); 
     
-        // --- FUNCIÓN MOVIDA AFUERA PARA QUE SEA VISIBLE ---
+        // --- FUNCIONES DEL MULTI-SELECTOR DE SUPERVISORES ---
+    
+        function toggleSupDropdown() {
+            const list = document.getElementById('supDropdownList');
+            if(list) list.classList.toggle('hidden');
+        }
+    
+        // Cerrar el menú si se hace clic fuera
+        window.addEventListener('click', function(e) {
+            const btn = document.getElementById('supDropdownBtn');
+            const list = document.getElementById('supDropdownList');
+            if (btn && list && !btn.contains(e.target) && !list.contains(e.target)) {
+                list.classList.add('hidden');
+            }
+        });
+    
+        function toggleAllSupervisors(source) {
+            const checkboxes = document.querySelectorAll('.anl-sup-check');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateSupButtonText();
+        }
+    
+        function updateSupButtonText() {
+            const checkboxes = document.querySelectorAll('.anl-sup-check');
+            const checked = document.querySelectorAll('.anl-sup-check:checked');
+            const btnText = document.getElementById('supBtnText');
+            const checkAll = document.getElementById('sup-check-all');
+    
+            // Actualizar estado del check "Todos"
+            if (checkAll) {
+                checkAll.checked = (checked.length === checkboxes.length && checkboxes.length > 0);
+                checkAll.indeterminate = (checked.length > 0 && checked.length < checkboxes.length);
+            }
+    
+            // Actualizar texto del botón
+            if (checked.length === 0) {
+                btnText.textContent = "Ninguno seleccionado";
+            } else if (checked.length === checkboxes.length && checkboxes.length > 0) {
+                btnText.textContent = "Todos seleccionados";
+            } else if (checked.length === 1) {
+                // Buscar el nombre del seleccionado en caché
+                const supId = checked[0].value;
+                const supName = supervisorsCache.find(s => s.id === supId)?.nombre || supId;
+                btnText.textContent = supName;
+            } else {
+                btnText.textContent = `${checked.length} seleccionados`;
+            }
+        }
+    
+        // --- PESTAÑAS ---
         function switchAnaTab(tabId) {
             ['t1', 't2', 't3'].forEach(t => {
                 const view = document.getElementById(`view-${t}`);
@@ -3614,33 +3673,44 @@ async function renderAsesorDashboard() {
         function initAnalytics() {
             const ySel = document.getElementById('anlYear');
             const mSel = document.getElementById('anlMonth');
-            const sSel = document.getElementById('anlSup');
+            const sContainer = document.getElementById('supCheckboxesContainer'); // Contenedor de checkboxes
             
-            // Validar que existan los elementos antes de usarlos
+            // Llenar Años y Meses
             if(ySel) ySel.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
             if(mSel) mSel.innerHTML = '<option value="all">Todos</option>' + availablePeriods.months.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            if(sSel) {
-                sSel.innerHTML = '<option value="all">Todos</option>';
-                supervisorsCache.forEach(s => sSel.innerHTML += `<option value="${s.id}">${s.nombre}</option>`);
+            // Llenar Supervisores (GENERACIÓN DE CHECKBOXES)
+            if(sContainer) {
+                sContainer.innerHTML = '';
+                supervisorsCache.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center p-2 hover:bg-gray-50 rounded';
+                    div.innerHTML = `
+                        <input type="checkbox" id="sup-chk-${s.id}" value="${s.id}" checked onchange="updateSupButtonText()" class="anl-sup-check w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="sup-chk-${s.id}" class="ml-2 text-sm text-gray-700 w-full cursor-pointer">${s.nombre}</label>
+                    `;
+                    sContainer.appendChild(div);
+                });
+                updateSupButtonText(); // Actualizar texto inicial del botón
             }
     
-            // Cargar datos iniciales
-            updateAnalytics(); 
+            updateAnalytics(); // Carga inicial
         }
     
         // 2. Carga y Procesamiento
         async function updateAnalytics() {
             const yearElem = document.getElementById('anlYear');
             const monthElem = document.getElementById('anlMonth');
-            const supElem = document.getElementById('anlSup');
-    
-            if(!yearElem || !monthElem || !supElem) return;
+            
+            if(!yearElem || !monthElem) return;
     
             const year = yearElem.value;
             const month = monthElem.value;
-            const supId = supElem.value;
             
+            // 1. OBTENER LISTA DE SUPERVISORES SELECCIONADOS
+            const selectedSupChecks = document.querySelectorAll('.anl-sup-check:checked');
+            const selectedSupIds = Array.from(selectedSupChecks).map(cb => cb.value);
+    
             const btn = document.querySelector('button[onclick="updateAnalytics()"]');
             const oldTxt = btn ? btn.innerHTML : 'Analizar';
             if(btn) { btn.innerHTML = '...'; btn.disabled = true; }
@@ -3655,7 +3725,9 @@ async function renderAsesorDashboard() {
     
                 snapshot.forEach(doc => {
                     const d = doc.data();
-                    if (supId === 'all' || d.supervisorId === supId) {
+                    
+                    // 2. FILTRO: Comprobar si el supervisor está en la lista de seleccionados
+                    if (selectedSupIds.includes(d.supervisorId)) {
                         if (d.categoriasEvaluadas) {
                             Object.keys(d.categoriasEvaluadas).forEach(catName => allDynamicCategories.add(catName));
                         }
@@ -3671,7 +3743,6 @@ async function renderAsesorDashboard() {
     
             } catch (e) {
                 console.error("Error en updateAnalytics:", e);
-                // No mostramos alert aquí para no bloquear si es error de permisos inicial
             } finally {
                 if(btn) { btn.innerHTML = oldTxt; btn.disabled = false; }
             }
@@ -3682,7 +3753,6 @@ async function renderAsesorDashboard() {
             const ctxTrend = document.getElementById('trendChart');
             const ctxStatus = document.getElementById('statusChart');
             
-            // Validación de seguridad por si las gráficas no existen en el DOM
             if (!ctxTrend || !ctxStatus) return;
     
             const months = availablePeriods.months;
@@ -3699,7 +3769,7 @@ async function renderAsesorDashboard() {
                 data: {
                     labels: months,
                     datasets: [{
-                        label: 'Promedio Global',
+                        label: 'Promedio Global (Selección)',
                         data: monthAvgs,
                         borderColor: '#2563eb',
                         backgroundColor: 'rgba(37, 99, 235, 0.1)',
@@ -3751,7 +3821,7 @@ async function renderAsesorDashboard() {
             tbody.innerHTML = '';
             
             if(data.length === 0) { 
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">No hay datos disponibles.</td></tr>'; 
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-500">No hay datos disponibles con los filtros seleccionados.</td></tr>'; 
                 return; 
             }
     
@@ -3947,6 +4017,11 @@ async function renderAsesorDashboard() {
         window.switchAnaTab = switchAnaTab;
         window.sortTable1 = sortTable1;
         window.sortSimpleTable = sortSimpleTable;
+
+        // Funciones del Multiselector (AÑADIR ESTAS LÍNEAS)
+        window.toggleSupDropdown = toggleSupDropdown;
+        window.toggleAllSupervisors = toggleAllSupervisors;
+        window.updateSupButtonText = updateSupButtonText;
         
         // Sincronización Manual
         window.forceSyncToFirebase = async () => {
