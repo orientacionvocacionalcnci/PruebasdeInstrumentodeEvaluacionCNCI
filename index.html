@@ -927,13 +927,31 @@
     
     <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
     <script type="module" defer>
-        // Importar funciones de Firebase 9+ (versión modular)
+        // 1. IMPORTAR INITIALIZEAPP (Indispensable)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        // 🚨 LÍNEA 1: IMPORTAR AUTH 🚨 
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, writeBatch, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // Configuración de Firebase (proporcionada por el usuario)
+        // 2. IMPORTAR AUTH
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
+
+        // 3. IMPORTAR FIRESTORE (Una sola vez, todo junto)
+        import { 
+            getFirestore, 
+            initializeFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            updateDoc, 
+            deleteDoc, 
+            collection, 
+            getDocs, 
+            query, 
+            where, 
+            writeBatch, 
+            serverTimestamp, 
+            addDoc 
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Configuración de Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyDTRMoPteuAahoATZ1p5iXkj4XofBuaQ40",
           authDomain: "pruebasdeinstrdeevaluacioncnci.firebaseapp.com",
@@ -944,19 +962,25 @@
           measurementId: "G-Q6DKY6ZS1Z"
         };
 
-        // Inicialización de Firebase
+        // Inicialización de la App
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        
+        // CORRECCIÓN APLICADA: Forzar Long Polling para evitar bloqueos de red
+        const db = initializeFirestore(app, {
+            experimentalForceLongPolling: true, 
+            useFetchStreams: false
+        });
 
-        // 🚨 ESTAS TRES LÍNEAS DEBEN ESTAR AQUÍ, AFUERA DE CUALQUIER FUNCIÓN 🚨
+        // Inicializar Auth
         const auth = getAuth(app); 
 
+        // Iniciar sesión anónima
         signInAnonymously(auth)
             .then(() => {
-                console.log("Sesión anónima iniciada. Reglas de seguridad habilitadas.");
+                console.log("Sesión anónima iniciada.");
             })
             .catch((error) => {
-                console.error("Error al iniciar sesión anónima:", error);
+                console.error("Error al iniciar sesión:", error);
         });
 
         // Variables de estado globales
