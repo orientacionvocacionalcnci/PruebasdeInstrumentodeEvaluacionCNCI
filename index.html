@@ -2693,18 +2693,18 @@ async function renderAsesorDashboard() {
             let rawCategories = templateDoc.data().categorias || [];
             const templateCategories = normalizeCategories(rawCategories);
             
-            let sumaPuntajesPonderados = 0; // Acumulador de (Score * Peso)
-            let sumaPesosTotales = 0;       // Acumulador de Pesos (Ponderación)
+            // --- LÓGICA CORREGIDA (IGUAL QUE EN SAVEEVALUATION) ---
+            let sumaPuntajesPonderados = 0;
+            let sumaPesosTotales = 0;
         
             // 2. Iteramos Nivel CATEGORÍA
             templateCategories.forEach(cat => {
                 const catPonderacion = parseFloat(cat.ponderacion) || 0;
-                let catScore0to10 = 0; // Puntaje de la categoría en escala 0-10
+                let catScore0to10 = 0; 
         
-                // 3. Iteramos Nivel GRUPO para obtener el puntaje de la categoría
+                // 3. Iteramos Nivel GRUPO
                 cat.grupos.forEach(grupo => {
                     const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
-                    
                     let grupoSum = 0;
                     let grupoCount = 0;
         
@@ -2720,26 +2720,21 @@ async function renderAsesorDashboard() {
                         }
                     });
         
-                    // Cálculo Promedio del Grupo y su aporte a la categoría
                     if (grupoCount > 0) {
                         const grupoAverage = grupoSum / grupoCount; 
-                        // Aporte del grupo al puntaje 0-10 de la categoría
                         const grupoContribution = grupoAverage * (grupoPonderacion / 100);
                         catScore0to10 += grupoContribution;
                     }
                 });
         
-                // 4. LÓGICA CORREGIDA:
-                // Solo sumamos si la categoría tiene peso mayor a 0
+                // 4. ACUMULAMOS SOLO SI TIENE PESO (NORMALIZACIÓN)
                 if (catPonderacion > 0) {
                     sumaPuntajesPonderados += catScore0to10 * catPonderacion;
                     sumaPesosTotales += catPonderacion;
                 }
             });
         
-            // 5. Cálculo Final Normalizado
-            // Si la suma de pesos es 0 (evitar división por cero), el resultado es 0.
-            // Si la suma de pesos es 80, dividimos entre 80, proyectando el resultado a base 100.
+            // 5. División final segura
             let finalScore = 0;
             if (sumaPesosTotales > 0) {
                 finalScore = sumaPuntajesPonderados / sumaPesosTotales;
