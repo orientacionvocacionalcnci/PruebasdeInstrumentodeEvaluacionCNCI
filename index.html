@@ -1972,13 +1972,18 @@ async function saveEvaluation() {
                 alert("Error: No se encontró la plantilla de evaluación.");
                 return;
             }
-            
-            // NORMALIZAR para obtener grupos
-            const templateCategories = normalizeCategories(templateDoc.data().categorias || []);
-
+            // 👇👇👇 AQUI ES DONDE DEBES AGREGAR LA LÍNEA FALTANTE 👇👇👇
+            const templateCategories = normalizeCategories(templateDoc.data().categorias || []); 
+            // 👆👆👆 ESTA LÍNEA ES INDISPENSABLE
+            // --- INICIO DE LA LÓGICA DE CÁLCULO CORREGIDA ---
+            let sumaPuntajesPonderados = 0;
+            let sumaPesosTotales = 0;
+        
             // Recorrer Categorías y Grupos para construir el objeto de datos
             templateCategories.forEach(cat => {
                 const catName = cat.nombre;
+                const catPonderacion = parseFloat(cat.ponderacion) || 0;
+        
                 const catData = {
                     criterios: {},
                     puntaje: 0,
@@ -1986,47 +1991,59 @@ async function saveEvaluation() {
                     comentarioSupervision: ''
                 };
                 
-                let catTotalWeightedScore = 0; // Suma ponderada de los grupos
-
+                let catScore0to10 = 0; // Puntaje interno de la categoría (0-10)
+        
                 cat.grupos.forEach(grupo => {
                     const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
                     let grupoSum = 0;
                     let grupoCount = 0;
-
+        
                     // Recolectar puntajes de este grupo
                     grupo.criterios.forEach(critName => {
                         const input = document.querySelector(`#evaluationModal input[data-category="${catName}"][data-criterion="${critName}"]`);
                         if (input && input.value !== '') {
                             const score = parseFloat(input.value);
                             if (!isNaN(score)) {
-                                // Guardamos el criterio plano en el objeto (para compatibilidad de lectura)
                                 catData.criterios[critName] = score;
                                 grupoSum += score;
                                 grupoCount++;
                             }
                         }
                     });
-
-                    // Calcular aporte del grupo
+        
+                    // Calcular aporte del grupo a la categoría
                     if (grupoCount > 0) {
                         const grupoAvg = grupoSum / grupoCount;
                         const grupoContribution = grupoAvg * (grupoPonderacion / 100);
-                        catTotalWeightedScore += grupoContribution;
+                        catScore0to10 += grupoContribution;
                     }
                 });
-
+        
                 // Asignamos el puntaje final calculado de la categoría
-                catData.puntaje = catTotalWeightedScore.toFixed(2);
-
-                // Capturar comentarios
+                catData.puntaje = catScore0to10.toFixed(2);
+        
+                // --- AQUÍ ESTÁ EL CAMBIO CRUCIAL PARA EL PROMEDIO GENERAL ---
+                if (catPonderacion > 0) {
+                    sumaPuntajesPonderados += catScore0to10 * catPonderacion;
+                    sumaPesosTotales += catPonderacion;
+                }
+        
+                // Capturar comentarios (sin cambios)
                 const commentCalidad = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_calidad"]`);
                 if (commentCalidad) catData.comentarioCalidad = commentCalidad.value;
                 
                 const commentSupervision = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_supervision"]`);
                 if (commentSupervision) catData.comentarioSupervision = commentSupervision.value;
-
+        
                 evaluationData.categoriasEvaluadas[catName] = catData;
             });
+        
+            // CÁLCULO FINAL DE LA NOTA GENERAL
+            if (sumaPesosTotales > 0) {
+                evaluationData.calificacionGeneral = (sumaPuntajesPonderados / sumaPesosTotales).toFixed(2);
+            } else {
+                evaluationData.calificacionGeneral = "0.00";
+            }
 
             try {
                 await setDoc(doc(db, "evaluations", evalId), evaluationData, { merge: true });
@@ -2038,7 +2055,7 @@ async function saveEvaluation() {
                 console.error("Error al guardar evaluación:", error);
                 alert('Hubo un error al guardar la evaluación.');
             }
-        };
+        }
 
 
         // ======================= VISTA ASESOR =======================
@@ -2672,30 +2689,26 @@ async function renderAsesorDashboard() {
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
             if (!templateDoc.exists()) return;
             
-            // 1. Obtenemos datos y normalizamos para asegurar estructura de grupos
+            // 1. Obtenemos datos y normalizamos
             let rawCategories = templateDoc.data().categorias || [];
             const templateCategories = normalizeCategories(rawCategories);
             
-            let finalWeightedScore = 0;
-
+            let sumaPuntajesPonderados = 0; // Acumulador de (Score * Peso)
+            let sumaPesosTotales = 0;       // Acumulador de Pesos (Ponderación)
+        
             // 2. Iteramos Nivel CATEGORÍA
             templateCategories.forEach(cat => {
                 const catPonderacion = parseFloat(cat.ponderacion) || 0;
-                let catTotalScore = 0; // Puntaje acumulado de la categoría (suma de grupos ponderados)
-
-                // 3. Iteramos Nivel GRUPO
+                let catScore0to10 = 0; // Puntaje de la categoría en escala 0-10
+        
+                // 3. Iteramos Nivel GRUPO para obtener el puntaje de la categoría
                 cat.grupos.forEach(grupo => {
                     const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
                     
-                    // Buscamos los inputs que pertenecen a este Grupo Específico
-                    // NOTA: En el paso 2 de implementación (próxima interacción) actualizaremos el HTML del modal
-                    // para incluir data-group. Por ahora, buscamos por criterio para mantener compatibilidad V1.
-                    
                     let grupoSum = 0;
                     let grupoCount = 0;
-
+        
                     grupo.criterios.forEach(critName => {
-                        // Selector robusto: Intenta buscar por categoría Y criterio.
                         const input = document.querySelector(`#evaluationModal input[data-category="${cat.nombre}"][data-criterion="${critName}"]`);
                         
                         if (input && input.value !== '') {
@@ -2706,27 +2719,33 @@ async function renderAsesorDashboard() {
                             }
                         }
                     });
-
-                    // 4. Cálculo Promedio del Grupo (Nivel 2)
+        
+                    // Cálculo Promedio del Grupo y su aporte a la categoría
                     if (grupoCount > 0) {
-                        const grupoAverage = grupoSum / grupoCount; // Promedio simple (0-10)
-                        
-                        // 5. Contribución del Grupo a la Categoría (Nivel 3)
-                        // Fórmula: (PromedioGrupo * (PesoGrupo / 100))
+                        const grupoAverage = grupoSum / grupoCount; 
+                        // Aporte del grupo al puntaje 0-10 de la categoría
                         const grupoContribution = grupoAverage * (grupoPonderacion / 100);
-                        catTotalScore += grupoContribution;
+                        catScore0to10 += grupoContribution;
                     }
                 });
-
-                // 6. Contribución de la Categoría a la General (Nivel 4)
-                // Fórmula: (PuntajeCategoria * (PesoCategoria / 100))
-                // Nota: catTotalScore ya está en escala 0-10 ponderada por sus grupos.
-                const catContribution = catTotalScore * (catPonderacion / 100);
-                
-                finalWeightedScore += catContribution;
+        
+                // 4. LÓGICA CORREGIDA:
+                // Solo sumamos si la categoría tiene peso mayor a 0
+                if (catPonderacion > 0) {
+                    sumaPuntajesPonderados += catScore0to10 * catPonderacion;
+                    sumaPesosTotales += catPonderacion;
+                }
             });
-
-            const finalScoreOutOf10 = finalWeightedScore.toFixed(2); // Cambiado a 2 decimales según requerimiento
+        
+            // 5. Cálculo Final Normalizado
+            // Si la suma de pesos es 0 (evitar división por cero), el resultado es 0.
+            // Si la suma de pesos es 80, dividimos entre 80, proyectando el resultado a base 100.
+            let finalScore = 0;
+            if (sumaPesosTotales > 0) {
+                finalScore = sumaPuntajesPonderados / sumaPesosTotales;
+            }
+        
+            const finalScoreOutOf10 = finalScore.toFixed(2);
             const scoreInput = document.getElementById('evalGeneralScore');
             if (scoreInput) {
                 scoreInput.value = finalScoreOutOf10;
