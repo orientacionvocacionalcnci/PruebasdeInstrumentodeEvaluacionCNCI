@@ -3541,8 +3541,12 @@ async function renderAsesorDashboard() {
             const template = normalizeCategories(templateDoc.data().categorias || []);
             const supervisorName = usersCache[supervisorId]?.nombre || supervisorId;
 
-            // 1. Headers Dinámicos
-            let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales"];
+            // 1. Headers Dinámicos (ACTUALIZADO)
+            let headers = [
+                "evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", 
+                "Llamadas", "Cumplimiento Llamadas %", "Alumnos", "Cumplimiento Alumnos %", 
+                "Comentarios Generales", "Enlace Detalles", "Enlace Plan Trabajo", "Texto Plan Trabajo"
+            ];
             template.forEach(cat => {
                 cat.grupos.forEach(grupo => {
                     grupo.criterios.forEach(crit => {
@@ -3570,12 +3574,29 @@ async function renderAsesorDashboard() {
                 if (filterMonth && filterMonth !== 'all' && e.month !== filterMonth) return;
                 if (!asesorIds.includes(e.asesorId)) return; // <-- CLAVE: Solo exporta los seleccionados
 
+                // --- INICIO BLOQUE MODIFICADO ---
                 const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
-                
+                const m = e.metricas || {}; // Extraer métricas de manera segura
+
                 let row = [
-                    doc.id, e.asesorId, `"${asesorNombre}"`, e.month, e.year,
-                    e.calificacionGeneral || '', e.metaLlamadas || '',
-                    `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`
+                    doc.id, 
+                    e.asesorId, 
+                    `"${asesorNombre}"`, 
+                    e.month, 
+                    e.year,
+                    e.calificacionGeneral || '',
+                    
+                    // Nuevas Métricas
+                    m.llamadas || '0',
+                    m.llamadasPct || '0',
+                    m.alumnos || '0',
+                    m.alumnosPct || '0',
+
+                    // Comentarios y Enlaces (con limpieza de comillas para CSV)
+                    `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`,
+                    `"${e.enlaceDetalles || ''}"`,
+                    `"${e.enlacePlanTrabajo || ''}"`,
+                    `"${(e.textoPlanTrabajo || '').replace(/"/g, '""')}"`
                 ];
 
                 template.forEach(cat => {
