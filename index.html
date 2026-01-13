@@ -3326,8 +3326,6 @@ async function renderAsesorDashboard() {
             modal.classList.remove('hidden');
         }
 
-        // ======================= LÓGICA DE VISUALIZACIÓN DE EVALUACIÓN INDIVIDUAL =======================
-
         async function viewSingleEvaluationFromExport() {
             // 1. Validar selección única
             const selectedChecks = document.querySelectorAll('.asesor-check:checked');
@@ -3382,7 +3380,7 @@ async function renderAsesorDashboard() {
                 const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
                 const template = normalizeCategories(templateDoc.exists() ? templateDoc.data().categorias || [] : []);
 
-                // 5. Renderizar Contenido (Reutilizando lógica visual del dashboard)
+                // 5. Renderizar Contenido
                 let html = '';
 
                 // --- Métricas ---
@@ -3438,12 +3436,38 @@ async function renderAsesorDashboard() {
                         </div>
                     `;
                 });
-
-                // --- Feedback General ---
+                
+                // --- SECCIÓN NUEVA: Feedback, Enlaces y Plan de Trabajo ---
                 html += `
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6">
-                        <h5 class="font-bold text-yellow-800 text-sm mb-1">Feedback General</h5>
-                        <p class="text-sm text-yellow-900">${data.comentariosGenerales || 'Sin comentarios.'}</p>
+                    <div class="mt-8 space-y-4">
+                        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                            <h5 class="font-bold text-yellow-800 text-sm mb-2">Feedback / Comentarios Generales</h5>
+                            <p class="text-sm text-yellow-900 whitespace-pre-wrap leading-relaxed">${data.comentariosGenerales || 'Sin comentarios generales.'}</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col h-full">
+                                <h5 class="font-bold text-blue-800 text-sm mb-3">Documento de Detalles</h5>
+                                <div class="mt-auto">
+                                    ${data.enlaceDetalles 
+                                        ? `<a href="${data.enlaceDetalles}" target="_blank" class="block w-full text-center bg-white border border-blue-300 text-blue-600 font-semibold py-2 px-4 rounded hover:bg-blue-50 transition-colors text-sm">🔗 Abrir Documento Adjunto</a>` 
+                                        : `<div class="text-sm text-gray-400 italic bg-white p-2 rounded border border-gray-200 text-center">No se adjuntó enlace</div>`
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200 flex flex-col h-full">
+                                <h5 class="font-bold text-green-800 text-sm mb-2">Plan de Trabajo</h5>
+                                <p class="text-sm text-green-900 mb-4 whitespace-pre-wrap flex-grow">${data.textoPlanTrabajo || 'Sin texto asignado.'}</p>
+                                <div class="mt-auto">
+                                     ${data.enlacePlanTrabajo 
+                                        ? `<a href="${data.enlacePlanTrabajo}" target="_blank" class="block w-full text-center bg-white border border-green-300 text-green-600 font-semibold py-2 px-4 rounded hover:bg-green-50 transition-colors text-sm">🔗 Ir al Recurso del Plan</a>` 
+                                        : `<div class="text-sm text-gray-400 italic bg-white p-2 rounded border border-gray-200 text-center">No se adjuntó enlace</div>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
