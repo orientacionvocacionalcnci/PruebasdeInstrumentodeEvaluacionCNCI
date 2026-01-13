@@ -927,13 +927,14 @@
     
     <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
     <script type="module" defer>
-        // 1. IMPORTAR INITIALIZEAPP (Indispensable)
+        // 1. IMPORTACIONES
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 
-        // 2. IMPORTAR AUTH
+        // 2. IMPORTAR AUTH (Anónimo)
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
 
-        // 3. IMPORTAR FIRESTORE (Una sola vez, todo junto)
+        // 3. IMPORTAR FIRESTORE (Herramientas completas)
+        // Nota: Dejé orderBy y limit aquí por seguridad, para que no fallen tus gráficas si las usan.
         import { 
             getFirestore, 
             initializeFirestore, 
@@ -948,10 +949,12 @@
             where, 
             writeBatch, 
             serverTimestamp, 
-            addDoc 
+            addDoc,
+            orderBy, 
+            limit 
         } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // Configuración de Firebase
+        // CONFIGURACIÓN
         const firebaseConfig = {
           apiKey: "AIzaSyDTRMoPteuAahoATZ1p5iXkj4XofBuaQ40",
           authDomain: "pruebasdeinstrdeevaluacioncnci.firebaseapp.com",
@@ -962,26 +965,21 @@
           measurementId: "G-Q6DKY6ZS1Z"
         };
 
-        // Inicialización de la App
+        // INICIALIZACIÓN
         const app = initializeApp(firebaseConfig);
         
-        // CORRECCIÓN APLICADA: Forzar Long Polling para evitar bloqueos de red
+        // CORRECCIÓN: Long Polling para red universitaria
         const db = initializeFirestore(app, {
             experimentalForceLongPolling: true, 
             useFetchStreams: false
         });
 
-        // Inicializar Auth
         const auth = getAuth(app); 
 
-        // Iniciar sesión anónima
+        // INICIO DE SESIÓN
         signInAnonymously(auth)
-            .then(() => {
-                console.log("Sesión anónima iniciada.");
-            })
-            .catch((error) => {
-                console.error("Error al iniciar sesión:", error);
-        });
+            .then(() => console.log("Sesión anónima iniciada."))
+            .catch((error) => console.error("Error Auth:", error));
 
         // Variables de estado globales
         let currentUser = null;
